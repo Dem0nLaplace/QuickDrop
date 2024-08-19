@@ -1,0 +1,51 @@
+ <!DOCTYPE html>
+ <html lang="en">
+ <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="main.css">
+ </head>
+ <body>
+    <div id="main">
+        <button id="connect">Connect</button>
+        <button id="sendFile">Send File</button>
+        <button id="disconnect">Disconnect</button>
+    </div>
+ </body>
+<script>
+// In your frontend JavaScript (e.g., app.js)
+    
+
+
+    const socket = new WebSocket('ws://localhost:8080');
+
+    document.getElementById('sendFile').onclick = () => sendMessage(socket);
+    function sendMessage(socket){
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send('A friendly message sent by client side');
+            console.log('Message sent to server');
+        } else {
+            console.log('WebSocket connection is not open');
+    }
+    }
+
+    socket.onopen = () => {
+        console.log('Connected to WebSocket server');
+    };
+
+    socket.onmessage = (event) => {
+        console.log(`Message from server: ${event.data}`);
+    };
+
+    socket.onclose = () => {
+        console.log('WebSocket connection closed');
+    };
+
+    socket.onerror = (error) => {
+        console.log('WebSocket error:', error);
+    };
+
+</script>
+
+ </html>

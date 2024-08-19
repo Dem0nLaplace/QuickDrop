@@ -1,0 +1,22 @@
+{
+  "name": "quickdrop",
+  "version": "1.0.0",
+  "description": "An webapp that allows users to share files with other users locally",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dem0nLaplace/QuickDrop.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Dem0nLaplace/QuickDrop/issues"
+  },
+  "homepage": "https://github.com/Dem0nLaplace/QuickDrop#readme",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
