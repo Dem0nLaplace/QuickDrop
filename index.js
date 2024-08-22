@@ -1,6 +1,27 @@
 // server.js (or another appropriate file)
+const http = require('http');
 const WebSocket = require('ws');
+const fs = require('fs');
 
+//create http server
+http.createServer((request, response) => {
+    //response.statusCode = 200;
+    response.writeHead(200, {'Content-Type': 'text/html'});
+    try{
+        const html = fs.readFileSync('index.html');
+        response.write(html);
+        response.end();
+    }catch(e){
+        response.statusCode - 404;
+        response.write("Bad Request");
+        console.log(e);
+        response.end();
+    }
+}).listen(8000);
+
+
+
+//create web socket server
 const wss = new WebSocket.Server({ port: 8080 });
 
 wss.on('connection', (ws) => {
@@ -24,6 +45,12 @@ wss.on('connection', (ws) => {
 
 });
 
+
+function log(text) {
+    var time = new Date();
+
+    console.log("[" + time.toLocaleTimeString() + "] " + text);
+}
 
 
 console.log('WebSocket server running on ws://localhost:8080');
