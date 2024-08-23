@@ -5,18 +5,33 @@ const fs = require('fs');
 
 //create http server
 http.createServer((request, response) => {
-    //response.statusCode = 200;
-    response.writeHead(200, {'Content-Type': 'text/html'});
-    try{
-        const html = fs.readFileSync('index.html');
-        response.write(html);
-        response.end();
-    }catch(e){
-        response.statusCode - 404;
-        response.write("Bad Request");
-        console.log(e);
-        response.end();
+    if(request.url === '/'){
+        response.writeHead(200, {'Content-Type': 'text/html'});
+        try{
+            const html = fs.readFileSync('index.html');
+            response.write(html);
+            response.end();
+        }catch(e){
+            response.statusCode = 404;
+            response.write("Bad Request");
+            console.log(e);
+            response.end();
+        }
+    }else if(request.url === '/main.css'){
+        response.writeHead(200, {'Content-Type': 'text/css'});
+        try{
+            const css = fs.readFileSync('main.css');
+            response.write(css);
+            response.end();
+        }catch(e){
+            response.statusCode = 404;
+            response.write("Bad Request");
+            console.log(e);
+            response.end();
+        }
     }
+
+
 }).listen(8000);
 
 
