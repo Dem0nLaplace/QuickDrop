@@ -42,21 +42,30 @@ const wss = new WebSocket.Server({ port: 8080 });
 wss.on('connection', (ws) => {
     ws.on('message', (message) => {
         console.log(`Received message from client: ${message}`);
+
+        const jsonMessage = {text: "server side: message has received"};
+
+        wss.clients.forEach((client) => {
+            client.send(JSON.stringify(jsonMessage));
+        });
         // Broadcast the message to all connected clients
+
+        /*
         wss.clients.forEach((client) => {
             if (client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(message);
+                client.send(jsonMessage);
             }
         });
+        */
+
     });
 
     ws.on('close', () => {
         console.log("A client has disconnected");
     });
 
-    ws.send('Connection established!');
-    ws.send('Hello World!');
-    ws.send('Can anyone hear me');
+    ws.send(JSON.stringify({text: "server side: message has received"}));
+    //ws.send('Hello World From Server!');
 
 });
 

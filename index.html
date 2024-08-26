@@ -18,7 +18,8 @@
     var peerConnection = null;
 
 
-    const socket = new WebSocket('ws://localhost:8080');
+    //const socket = new WebSocket('ws://localhost:8080');
+    const socket = new WebSocket('ws://192.168.1.158:8080');
 
     document.getElementById('sendFile').onclick = () => sendMessage(socket);
     function sendMessage(socket){
@@ -35,7 +36,8 @@
     };
 
     socket.onmessage = (event) => {
-        console.log(`Message from server: ${event.data}`);
+        const message = JSON.parse(event.data).text;
+        console.log(`Message from server: ${message}`);
     };
 
     socket.onclose = () => {
