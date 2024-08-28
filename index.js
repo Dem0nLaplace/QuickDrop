@@ -1,7 +1,9 @@
-// server.js (or another appropriate file)
+// server.js
 const http = require('http');
 const WebSocket = require('ws');
 const fs = require('fs');
+
+const peerConnection = null;
 
 //create http server
 http.createServer((request, response) => {
@@ -43,8 +45,9 @@ wss.on('connection', (ws) => {
     ws.on('message', (message) => {
         console.log(`Received message from client: ${message}`);
 
-        const jsonMessage = {text: "server side: message has received"};
+        const jsonMessage = {text: "message has received"};
 
+        
         wss.clients.forEach((client) => {
             client.send(JSON.stringify(jsonMessage));
         });
@@ -78,3 +81,5 @@ function log(text) {
 
 
 console.log('WebSocket server running on ws://localhost:8080');
+console.log("Click this link to access html: http://localhost:8000/");
+

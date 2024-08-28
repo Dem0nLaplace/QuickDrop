@@ -5,54 +5,80 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
     <link rel="stylesheet" href="main.css">
+    <!-- <script src="client.js"></script> -->
  </head>
  <body>
     <div id="main">
         <button id="connect">Connect</button>
         <button id="sendFile">Send File</button>
+        <button id="ping">Ping</button>
         <button id="disconnect">Disconnect</button>
+
     </div>
+    <script>
+        //const socket = new WebSocket('ws://localhost:8080');
+        //const socket = new WebSocket('ws://192.168.1.158:8080');
+        
+        let socket = null;  //websocket connection
+        
+        //bind connection with connect button
+        document.getElementById('connect').onclick = connectWebSocket;
+        function connectWebSocket(){
+            if(socket == null || socket.readyState === WebSocket.CLOSED){
+                socket = new WebSocket('ws://192.168.1.158:8080');
+
+                socket.onopen = () => {
+                    console.log('Connected to WebSocket server');
+                };
+        
+                socket.onmessage = (event) => {
+                    const message = JSON.parse(event.data).text;
+                    console.log(`Message from server: ${message}`);
+                };
+        
+                socket.onclose = () => {
+                    console.log('WebSocket connection closed');
+                };
+        
+                socket.onerror = (error) => {
+                    console.log('WebSocket error:', error);
+                };
+            }else{
+                console.log("WARNING, you already have a connection!");
+            }
+        }
+        
+        //bind function with ping button
+        document.getElementById('ping').onclick = () =>{
+            console.log("socket state is " + (socket.readyState === WebSocket.OPEN));
+        }
+
+
+        //bind function with sendFile button
+        document.getElementById('sendFile').onclick = sendMessage;
+        function sendMessage(){
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send('A friendly message sent by client side');
+                console.log('Message sent to server');
+            } else {
+                console.log('WebSocket connection is not open');
+            }
+        }
+        
+        //bind function with disconnect button
+        document.getElementById('disconnect').onclick = () =>{
+            socket.close();
+        }
+    
+    
+        function log(text) {
+            var time = new Date();
+            console.log("[" + time.toLocaleTimeString() + "] " + text);
+        }
+        
+
+    </script>
  </body>
-<script>
-    // In your frontend JavaScript (e.g., app.js)
-    var peerConnection = null;
 
-
-    //const socket = new WebSocket('ws://localhost:8080');
-    const socket = new WebSocket('ws://192.168.1.158:8080');
-
-    document.getElementById('sendFile').onclick = () => sendMessage(socket);
-    function sendMessage(socket){
-        if (socket.readyState === WebSocket.OPEN) {
-            socket.send('A friendly message sent by client side');
-            console.log('Message sent to server');
-        } else {
-            console.log('WebSocket connection is not open');
-    }
-    }
-
-    socket.onopen = () => {
-        console.log('Connected to WebSocket server');
-    };
-
-    socket.onmessage = (event) => {
-        const message = JSON.parse(event.data).text;
-        console.log(`Message from server: ${message}`);
-    };
-
-    socket.onclose = () => {
-        console.log('WebSocket connection closed');
-    };
-
-    socket.onerror = (error) => {
-        console.log('WebSocket error:', error);
-    };
-
-    function log(text) {
-        var time = new Date();
-        console.log("[" + time.toLocaleTimeString() + "] " + text);
-    }
-
-</script>
 
  </html>
