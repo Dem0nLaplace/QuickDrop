@@ -1,9 +1,12 @@
-// server.js
+// server side code
 const http = require('http');
 const WebSocket = require('ws');
 const fs = require('fs');
+const {v4: uuid} = require('uuid');
 
-const peerConnection = null;
+let peerConnection = null;
+let userArray = [];
+let userMap = new Map();
 
 //create http server
 http.createServer((request, response) => {
@@ -42,16 +45,54 @@ http.createServer((request, response) => {
 const wss = new WebSocket.Server({ port: 8080 });
 
 wss.on('connection', (ws) => {
+    var username = null;
+    var userid = null;
+
+    //if username is unique 
+    //  assign uuid to user on connection,
+    //else end connection, return invalid username
+    ws.once('message', (message) => {
+        console.log("Detected incoming new connection");
+        let jsonObj = JSON.parse(message);
+        if(jsonObj.type == 'username'){
+            if(userMap.has(jsonObj.username)){
+                ws.send(JSON.stringify({type: 'reject', text: "duplicate username, try a different username"}));
+                ws.close();
+            }else{
+                username = jsonObj.username;
+                userid = uuid();
+                const jsonMessage = {
+                    text: "assigning userid",
+                    uuid: userid,
+                    type: 'uuid'
+                };
+                ws.send(JSON.stringify(jsonMessage));
+
+                userMap.set(username, userid);
+                console.log(`Connection Approved, username: ${username}, userid: ${userid}`);
+
+                //also send a list of all current users
+            }
+        }
+
+    });
+
+
     ws.on('message', (message) => {
-        console.log(`Received message from client: ${message}`);
-
-        const jsonMessage = {text: "message has received"};
-
+        let jsonObj = JSON.parse(message);
+        switch(jsonObj.type){
+            case 'message':
+                console.log(`Received message from client ${userid}: ${jsonObj.text}`);
+                break;
+        }    
+        //console.log(`Received message from client: ${message}`);
         
+        // Broadcast the message to all connected clients
+        /*
         wss.clients.forEach((client) => {
             client.send(JSON.stringify(jsonMessage));
         });
-        // Broadcast the message to all connected clients
+        */
 
         /*
         wss.clients.forEach((client) => {
@@ -67,7 +108,7 @@ wss.on('connection', (ws) => {
         console.log("A client has disconnected");
     });
 
-    ws.send(JSON.stringify({text: "server side: message has received"}));
+    
     //ws.send('Hello World From Server!');
 
 });

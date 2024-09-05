@@ -9,7 +9,11 @@
  </head>
  <body>
     <div id="main">
-        <button id="connect">Connect</button>
+        <div>
+            <input id="usernameInput" value="asd"/>
+            <button id="connect">Connect</button>
+        </div>
+        
         <button id="sendFile">Send File</button>
         <button id="ping">Ping</button>
         <button id="disconnect">Disconnect</button>
@@ -20,20 +24,45 @@
         //const socket = new WebSocket('ws://192.168.1.158:8080');
         
         let socket = null;  //websocket connection
-        
+        let username = null;
+        let uuid = null;
+        let peersUserName = [];
+
         //bind connection with connect button
         document.getElementById('connect').onclick = connectWebSocket;
         function connectWebSocket(){
+            username = document.getElementById('usernameInput').value;
+            console.log("username = " + username);
+
+
             if(socket == null || socket.readyState === WebSocket.CLOSED){
-                socket = new WebSocket('ws://192.168.1.158:8080');
+                socket = new WebSocket('ws://192.168.1.158:8080');  //DEBUG: remove this in final product
 
                 socket.onopen = () => {
                     console.log('Connected to WebSocket server');
+                    socket.send(JSON.stringify({type: 'username', username: username}));
                 };
         
                 socket.onmessage = (event) => {
-                    const message = JSON.parse(event.data).text;
-                    console.log(`Message from server: ${message}`);
+                    const jsonObj = JSON.parse(event.data);
+
+                    switch(jsonObj.type){   //type: uuid, message, userList, changeName
+                        case 'uuid':
+                            uuid = jsonObj.uuid;
+                            console.log("assigned uuid: " + jsonObj.uuid);
+                            break;
+
+                        case 'message':
+                            const message = jsonObj.text;
+                            console.log('message from server: ' + message);
+                            break;
+
+                        case 'reject':
+                            console.log("connection rejected");
+                            console.log('message from server: ' + jsonObj.text);
+                            break;
+
+                    }
                 };
         
                 socket.onclose = () => {
@@ -58,7 +87,12 @@
         document.getElementById('sendFile').onclick = sendMessage;
         function sendMessage(){
             if (socket.readyState === WebSocket.OPEN) {
-                socket.send('A friendly message sent by client side');
+                let message = {
+                    text: 'A friendly message sent by client side',
+                    type: 'message'
+                }
+
+                socket.send(JSON.stringify(message));
                 console.log('Message sent to server');
             } else {
                 console.log('WebSocket connection is not open');
