@@ -28,6 +28,22 @@
         let uuid = null;
         let peersUserName = [];
 
+        let localConnection = new RTCPeerConnection();
+
+        //send and receive ICE candidates
+        localConnection.onicecandidate = ({ candidate }) => {
+            if (candidate) {
+                socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate }));
+            }
+        };
+
+        async function createOffer(){
+            const offer = await localConnection.createOffer();
+            await localConnection.setLocalDescription(offer);
+            socket.send(JSON.stringify({ type: 'offer', offer: offer }));
+        }
+
+
         //bind connection with connect button
         document.getElementById('connect').onclick = connectWebSocket;
         function connectWebSocket(){
@@ -43,7 +59,7 @@
                     socket.send(JSON.stringify({type: 'username', username: username}));
                 };
         
-                socket.onmessage = (event) => {
+                socket.onmessage = async (event) => {
                     const jsonObj = JSON.parse(event.data);
 
                     switch(jsonObj.type){   //type: uuid, message, userList, changeName
@@ -62,6 +78,30 @@
                             console.log('message from server: ' + jsonObj.text);
                             break;
 
+                        case 'userlist':
+                            let userlist = jsonObj.userlist;
+                            for(let user of userlist){
+                                console.log("username = " + user);
+                            }
+                            console.log("end of user list");
+                            break;
+
+                        case 'offer':
+                            await remoteConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+                            const answer = await remoteConnection.createAnswer();
+                            await remoteConnection.setLocalDescription(answer);
+                            socket.send(JSON.stringify({ type: 'answer', answer: answer }));
+                            break;
+
+                        case 'answer':
+                            await localConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+                            break;
+
+                        case 'iceCandidate':
+                            let candidate = new RTCIceCandidate(message.candidate);
+                            await localConnection.addIceCandidate(candidate);
+                            await remoteConnection.addIceCandidate(candidate);
+                            break;
                     }
                 };
         

@@ -1,11 +1,18 @@
 // server side code
+
+/*
+    Unresolved BUG
+
+    #1: a user disconnected, but his username is not dropped, which prevents
+        the user from conneccting again
+*/
+
 const http = require('http');
 const WebSocket = require('ws');
 const fs = require('fs');
 const {v4: uuid} = require('uuid');
 
 let peerConnection = null;
-let userArray = [];
 let userMap = new Map();
 
 //create http server
@@ -71,7 +78,15 @@ wss.on('connection', (ws) => {
                 userMap.set(username, userid);
                 console.log(`Connection Approved, username: ${username}, userid: ${userid}`);
 
-                //also send a list of all current users
+                //also send a updated list of all current users to every user
+                
+                let userArray = Array.from(userMap.keys());
+                for(let user of userArray){
+                    console.log("user = " + user);
+                }
+                console.log("END OF USER LIST");
+                ws.send(JSON.stringify({type: 'userlist', userlist: userArray}));
+
             }
         }
 
@@ -83,6 +98,11 @@ wss.on('connection', (ws) => {
         switch(jsonObj.type){
             case 'message':
                 console.log(`Received message from client ${userid}: ${jsonObj.text}`);
+                break;
+
+            case 'offer':
+
+
                 break;
         }    
         //console.log(`Received message from client: ${message}`);
