@@ -5,6 +5,9 @@
 
     #1: a user disconnected, but his username is not dropped, which prevents
         the user from conneccting again
+
+    #2: seems like the user list is not updated for all users when a new 
+        user connects
 */
 
 const http = require('http');
@@ -104,6 +107,12 @@ wss.on('connection', (ws) => {
                 sendToOneUser(jsonObj.target, jsonObj);
 
                 break;
+
+            case 'answer':
+                sendToOneUser(jsonObj.target, jsonObj);
+
+            case 'iceCandidate':
+                sendToOneUser(jsonObj.target, jsonObj);
         }    
         //console.log(`Received message from client: ${message}`);
         
@@ -145,7 +154,6 @@ function sendToOneUser(targetUsername, obj){
         let target = userMap.get(targetUsername);
         target.ws.send(JSON.stringify(obj));
         console.log(`Send message to ${targetUsername}`);
-        console.log("target ws = " + target.ws);
     }else{
         console.log(`User ${targetUsername} not found!`);
     }
