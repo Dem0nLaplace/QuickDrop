@@ -13,7 +13,7 @@ const fs = require('fs');
 const {v4: uuid} = require('uuid');
 
 let peerConnection = null;
-let userMap = new Map();
+let userMap = new Map();    //userMap stores username => uuid, ws
 
 //create http server
 http.createServer((request, response) => {
@@ -75,7 +75,7 @@ wss.on('connection', (ws) => {
                 };
                 ws.send(JSON.stringify(jsonMessage));
 
-                userMap.set(username, userid);
+                userMap.set(username, {userid: userid, ws: ws});    //userMap stores username => uuid, ws
                 console.log(`Connection Approved, username: ${username}, userid: ${userid}`);
 
                 //also send a updated list of all current users to every user
@@ -101,7 +101,7 @@ wss.on('connection', (ws) => {
                 break;
 
             case 'offer':
-
+                sendToOneUser(jsonObj.target, jsonObj);
 
                 break;
         }    
@@ -140,6 +140,16 @@ function log(text) {
     console.log("[" + time.toLocaleTimeString() + "] " + text);
 }
 
+function sendToOneUser(targetUsername, obj){
+    if(userMap.has(targetUsername)){
+        let target = userMap.get(targetUsername);
+        target.ws.send(JSON.stringify(obj));
+        console.log(`Send message to ${targetUsername}`);
+        console.log("target ws = " + target.ws);
+    }else{
+        console.log(`User ${targetUsername} not found!`);
+    }
+}
 
 console.log('WebSocket server running on ws://localhost:8080');
 console.log("Click this link to access html: http://localhost:8000/");

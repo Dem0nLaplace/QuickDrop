@@ -13,9 +13,16 @@
             <input id="usernameInput" value="asd"/>
             <button id="connect">Connect</button>
         </div>
+
+            <button id="sendFile">Send File</button>
         
-        <button id="sendFile">Send File</button>
+        <div>
+            <input id="peerUsernameInput"/>
+            <button id="sendPeer">Send Peer</button>
+        </div>
+
         <button id="ping">Ping</button>
+
         <button id="disconnect">Disconnect</button>
 
     </div>
@@ -37,11 +44,7 @@
             }
         };
 
-        async function createOffer(){
-            const offer = await localConnection.createOffer();
-            await localConnection.setLocalDescription(offer);
-            socket.send(JSON.stringify({ type: 'offer', offer: offer }));
-        }
+
 
 
         //bind connection with connect button
@@ -87,10 +90,34 @@
                             break;
 
                         case 'offer':
-                            await remoteConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
-                            const answer = await remoteConnection.createAnswer();
-                            await remoteConnection.setLocalDescription(answer);
-                            socket.send(JSON.stringify({ type: 'answer', answer: answer }));
+                            console.log(`offer: ${jsonObj.message}`);
+
+                            /*
+                            // Create RTCPeerConnection
+                            localConnection = new RTCPeerConnection();
+
+                            // Set the remote description with the incoming offer
+                            await localConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+
+                            // Create an answer to send back to the offerer
+                            const answer = await localConnection.createAnswer();
+                            await localConnection.setLocalDescription(answer);
+                            socket.send(JSON.stringify({type: 'answer', answer: answer, target: jsonObj.sender }));
+
+                            // Handle incoming ICE candidates
+                            localConnection.onicecandidate = ({ candidate }) => {
+                                if (candidate) {
+                                    socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: jsonObj.sender}));
+                                }
+                            };
+
+                            // Set up data channel
+                            var dataChannel = localConnection.createDataChannel('fileTransfer');
+                            dataChannel.onopen = () => console.log("Data channel open"); 
+                            dataChannel.onmessage = (event) => {
+                                console.log("Received peer message from data channel:" + event.data);
+                            }                
+                            */           
                             break;
 
                         case 'answer':
@@ -100,7 +127,6 @@
                         case 'iceCandidate':
                             let candidate = new RTCIceCandidate(message.candidate);
                             await localConnection.addIceCandidate(candidate);
-                            await remoteConnection.addIceCandidate(candidate);
                             break;
                     }
                 };
@@ -139,6 +165,23 @@
             }
         }
         
+        //bind function with sendPeer button
+        //send webRTC offer via websocket
+        document.getElementById('sendPeer').onclick = sendPeer;
+        function sendPeer(){
+            var targetUsername = document.getElementById('peerUsernameInput').value;
+            socket.send(JSON.stringify({type: 'offer', message: `Peer message from ${username}`, target: targetUsername, sender: username}));
+            //createOffer(targetUsername);
+            console.log(`send offer to peer ${targetUsername}`);
+        }
+
+        async function createOffer(targetUsername){
+            const offer = await localConnection.createOffer();
+            await localConnection.setLocalDescription(offer);
+            socket.send(JSON.stringify({ type: 'offer', offer: offer, target: targetUsername, sender: username}));
+        }
+
+
         //bind function with disconnect button
         document.getElementById('disconnect').onclick = () =>{
             socket.close();
