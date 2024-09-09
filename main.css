@@ -16,3 +16,44 @@ button{
     width: 100px;
     height: 40px;
 }
+
+/* Styling the user list div */
+#userListDiv {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 200px;
+    background-color: #f8f9fa;
+    border-left: 1px solid #ddd;
+    padding: 20px;
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+    height: 100%;
+    overflow-y: auto;
+}
+
+/* Styling the heading */
+#userListDiv h2 {
+    margin-top: 0;
+    font-size: 18px;
+    color: #333;
+}
+
+/* Styling the user list */
+#userList {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+/* Styling each user item */
+#userList li {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    color: #333;
+    font-size: 16px;
+}
+
+/* Hover effect on list items */
+#userList li:hover {
+    background-color: #e9ecef;
+    cursor: pointer;
+}

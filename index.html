@@ -25,18 +25,23 @@
 
         <button id="disconnect">Disconnect</button>
 
+        <div id="userlistDiv">
+            <h2>Active Users</h2>
+            <ul id="userList"></ul>
+        </div>
+
     </div>
     <script>
         //const socket = new WebSocket('ws://localhost:8080');
         //const socket = new WebSocket('ws://192.168.1.158:8080');
         
-        let socket = null;  //websocket connection
-        let username = null;
-        let uuid = null;
-        let peersUserName = [];
+        let socket = null;          //websocket connection
+        let username = null;        //username of the user
+        let uuid = null;            //uuid assigned by websocket server
 
-        let localConnection = null;
-        let peerConnection = null;
+        let localConnection = null; //webrtc connection
+        let peerConnection = null;  //webrtc data channel connection
+        let peerList = [];          //stores usernames of all the peers
 
         //bind connection with connect button
         document.getElementById('connect').onclick = connectWebSocket;
@@ -74,9 +79,18 @@
 
                         case 'userlist':
                             let userlist = jsonObj.userlist;
-                            for(let user of userlist){
-                                console.log("username = " + user);
+                            updateUserList(userlist);
+
+                            let userlistLog = "userlist: [";
+                            for(let i=0; i<userlist.length; i++){
+                                userlistLog += userlist[i];
+                                if(i != userlist.length-1){
+                                    userlistLog += ",";
+                                }
                             }
+                            userlistLog += "]";
+                            
+                            console.log(userlistLog);
                             console.log("end of user list");
                             break;
 
@@ -108,19 +122,13 @@
                                 
                                 datachannel.onopen = () => {
                                     console.log("Data channel open");
-                                    peerConnection = dataChannel;
+                                    peerConnection = datachannel;
                                 } 
                                 
                                 datachannel.onmessage = (event) => {
                                     console.log("Received peer message from data channel:" + event.data);
                                 }   
                             }
-                            
-                            //var dataChannel = localConnection.createDataChannel('fileTransfer');
-                            
-             
-                            
-
                             break;
 
                         case 'answer':
@@ -186,12 +194,8 @@
             console.log(`send offer to peer ${targetUsername}`);
         }
 
-        //content moved to setupWebRTC
-        async function createOffer(targetUsername){
 
-        }
-
-        //sender webrtc set up
+        //webrtc set up, sender side
         async function setupWebRTC(targetUsername){
             // Create the RTCPeerConnection
             localConnection = new RTCPeerConnection();
@@ -239,6 +243,19 @@
             console.log("[" + time.toLocaleTimeString() + "] " + text);
         }
         
+        function updateUserList(userlist){
+            const userListDiv = document.getElementById('userList');
+    
+            // Clear the current list
+            userListDiv.innerHTML = '';
+
+            // Populate the new list
+            userlist.forEach(user => {
+                const listItem = document.createElement('li');
+                listItem.textContent = user;
+                userListDiv.appendChild(listItem);
+            });
+        }
 
     </script>
  </body>

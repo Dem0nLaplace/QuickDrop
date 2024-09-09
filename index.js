@@ -81,14 +81,31 @@ wss.on('connection', (ws) => {
                 userMap.set(username, {userid: userid, ws: ws});    //userMap stores username => uuid, ws
                 console.log(`Connection Approved, username: ${username}, userid: ${userid}`);
 
-                //also send a updated list of all current users to every user
-                
-                let userArray = Array.from(userMap.keys());
-                for(let user of userArray){
-                    console.log("user = " + user);
+                //user list log
+                let userlist = Array.from(userMap.keys());
+                let userlistLog = "userlist: [";
+                for(let i=0; i<userlist.length; i++){
+                    userlistLog += userlist[i];
+                    if(i != userlist.length-1){
+                        userlistLog += ",";
+                    }
                 }
-                console.log("END OF USER LIST");
-                ws.send(JSON.stringify({type: 'userlist', userlist: userArray}));
+                userlistLog += "]";
+                console.log(userlistLog);
+
+                //send a updated list of all current users to every user
+                userMap.forEach((userData, user) =>{
+                    userData.ws.send(JSON.stringify({type: "userlist", userlist: userlist}));
+                    console.log(userData.userid);
+                });
+                
+               /*
+                wss.clients.forEach((client) => {
+                    if (client !== ws && client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({type: 'userlist', userlist: userlist}));
+                    }
+                });
+                */
 
             }
         }
@@ -105,24 +122,19 @@ wss.on('connection', (ws) => {
 
             case 'offer':
                 sendToOneUser(jsonObj.target, jsonObj);
-
                 break;
 
             case 'answer':
                 sendToOneUser(jsonObj.target, jsonObj);
+                break;
 
             case 'iceCandidate':
                 sendToOneUser(jsonObj.target, jsonObj);
+                break;
         }    
         //console.log(`Received message from client: ${message}`);
         
         // Broadcast the message to all connected clients
-        /*
-        wss.clients.forEach((client) => {
-            client.send(JSON.stringify(jsonMessage));
-        });
-        */
-
         /*
         wss.clients.forEach((client) => {
             if (client !== ws && client.readyState === WebSocket.OPEN) {
