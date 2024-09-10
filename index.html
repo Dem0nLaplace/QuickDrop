@@ -32,6 +32,12 @@
 
     </div>
     <script>
+        /*
+            Unresolved BUG
+
+
+        */
+
         //const socket = new WebSocket('ws://localhost:8080');
         //const socket = new WebSocket('ws://192.168.1.158:8080');
         
@@ -80,18 +86,9 @@
                         case 'userlist':
                             let userlist = jsonObj.userlist;
                             updateUserList(userlist);
+                            logUserList(userlist);
 
-                            let userlistLog = "userlist: [";
-                            for(let i=0; i<userlist.length; i++){
-                                userlistLog += userlist[i];
-                                if(i != userlist.length-1){
-                                    userlistLog += ",";
-                                }
-                            }
-                            userlistLog += "]";
-                            
-                            console.log(userlistLog);
-                            console.log("end of user list");
+                            //console.log("end of user list");
                             break;
 
                         case 'offer':   //webrtc set up for receiver                     
@@ -145,6 +142,7 @@
                 };
         
                 socket.onclose = () => {
+                    updateUserList([]); //clear user list
                     console.log('WebSocket connection closed');
                 };
         
@@ -255,6 +253,18 @@
                 listItem.textContent = user;
                 userListDiv.appendChild(listItem);
             });
+        }
+
+        function logUserList(userlist){
+            let userlistLog = "userlist: [";
+            for(let i=0; i<userlist.length; i++){
+                userlistLog += userlist[i];
+                if(i != userlist.length-1){
+                    userlistLog += ",";
+                }
+            }
+            userlistLog += "]";
+            console.log(userlistLog);
         }
 
     </script>

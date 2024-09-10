@@ -3,11 +3,7 @@
 /*
     Unresolved BUG
 
-    #1: a user disconnected, but his username is not dropped, which prevents
-        the user from conneccting again
 
-    #2: seems like the user list is not updated for all users when a new 
-        user connects
 */
 
 const http = require('http');
@@ -83,20 +79,11 @@ wss.on('connection', (ws) => {
 
                 //user list log
                 let userlist = Array.from(userMap.keys());
-                let userlistLog = "userlist: [";
-                for(let i=0; i<userlist.length; i++){
-                    userlistLog += userlist[i];
-                    if(i != userlist.length-1){
-                        userlistLog += ",";
-                    }
-                }
-                userlistLog += "]";
-                console.log(userlistLog);
+                logUserList(userlist);
 
                 //send a updated list of all current users to every user
                 userMap.forEach((userData, user) =>{
                     userData.ws.send(JSON.stringify({type: "userlist", userlist: userlist}));
-                    console.log(userData.userid);
                 });
                 
                /*
@@ -132,25 +119,22 @@ wss.on('connection', (ws) => {
                 sendToOneUser(jsonObj.target, jsonObj);
                 break;
         }    
-        //console.log(`Received message from client: ${message}`);
-        
-        // Broadcast the message to all connected clients
-        /*
-        wss.clients.forEach((client) => {
-            if (client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(jsonMessage);
-            }
-        });
-        */
-
     });
 
     ws.on('close', () => {
+        userMap.delete(username);
+
+        //user list log
+        let userlist = Array.from(userMap.keys());
+        logUserList(userlist);
+
+        //send a updated list of all current users to every user
+        userMap.forEach((userData, user) =>{
+            userData.ws.send(JSON.stringify({type: "userlist", userlist: userlist}));
+        });
+
         console.log("A client has disconnected");
     });
-
-    
-    //ws.send('Hello World From Server!');
 
 });
 
@@ -169,6 +153,18 @@ function sendToOneUser(targetUsername, obj){
     }else{
         console.log(`User ${targetUsername} not found!`);
     }
+}
+
+function logUserList(userlist){
+    let userlistLog = "userlist: [";
+    for(let i=0; i<userlist.length; i++){
+        userlistLog += userlist[i];
+        if(i != userlist.length-1){
+            userlistLog += ",";
+        }
+    }
+    userlistLog += "]";
+    console.log(userlistLog);
 }
 
 console.log('WebSocket server running on ws://localhost:8080');
