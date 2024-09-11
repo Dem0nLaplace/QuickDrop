@@ -14,7 +14,7 @@
             <button id="connect">Connect</button>
         </div>
 
-            <button id="sendFile">Send File</button>
+        <button id="sendFile">Send File</button>
         
         <div>
             <input id="peerUsernameInput"/>
@@ -45,9 +45,9 @@
         let username = null;        //username of the user
         let uuid = null;            //uuid assigned by websocket server
 
-        let localConnection = null; //webrtc connection
-        let peerConnection = null;  //webrtc data channel connection
-        let peerList = [];          //stores usernames of all the peers
+        let peerConnection = null; //webrtc connection
+        let dataChannel = null;     //webrtc data channel connection
+        let userlist = [];        //list of usernames, including self
 
         //bind connection with connect button
         document.getElementById('connect').onclick = connectWebSocket;
@@ -84,59 +84,55 @@
                             break;
 
                         case 'userlist':
-                            let userlist = jsonObj.userlist;
+                            userlist = jsonObj.userlist;
                             updateUserList(userlist);
                             logUserList(userlist);
-
-                            //console.log("end of user list");
                             break;
 
                         case 'offer':   //webrtc set up for receiver                     
                             // Create RTCPeerConnection
-                            localConnection = new RTCPeerConnection();
+                            peerConnection = new RTCPeerConnection();
 
                             // Set the remote description with the incoming offer
-                            await localConnection.setRemoteDescription(new RTCSessionDescription(jsonObj.offer));
+                            await peerConnection.setRemoteDescription(new RTCSessionDescription(jsonObj.offer));
 
                             // Create an answer to send back to the offerer
-                            const answer = await localConnection.createAnswer();
-                            await localConnection.setLocalDescription(answer);
-                            socket.send(JSON.stringify({type: 'answer', answer: localConnection.localDescription, target: jsonObj.sender }));
+                            const answer = await peerConnection.createAnswer();
+                            await peerConnection.setLocalDescription(answer);
+                            socket.send(JSON.stringify({type: 'answer', answer: peerConnection.localDescription, target: jsonObj.sender }));
 
                             // Handle incoming ICE candidates
-                            localConnection.onicecandidate = ({ candidate }) => {
-                                console.log("localConnection has received icecandidate");
+                            peerConnection.onicecandidate = ({ candidate }) => {
+                                console.log("peerConnection has received icecandidate");
                                 if (candidate) {
                                     socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: jsonObj.sender}));
                                 }
                             };
 
                             // Set up data channel
-                            var datachannel = null;
-                            localConnection.ondatachannel = (event) => {
-                                datachannel = event.channel;
-                                console.log("received data channel, state = " + datachannel.readyState);
+                            peerConnection.ondatachannel = (event) => {
+                                dataChannel = event.channel;
+                                console.log("received data channel, state = " + dataChannel.readyState);
                                 
-                                datachannel.onopen = () => {
+                                dataChannel.onopen = () => {
                                     console.log("Data channel open");
-                                    peerConnection = datachannel;
                                 } 
                                 
-                                datachannel.onmessage = (event) => {
+                                dataChannel.onmessage = (event) => {
                                     console.log("Received peer message from data channel:" + event.data);
                                 }   
                             }
                             break;
 
                         case 'answer':
-                            await localConnection.setRemoteDescription(new RTCSessionDescription(jsonObj.answer));
+                            await peerConnection.setRemoteDescription(new RTCSessionDescription(jsonObj.answer));
                             console.log("Received answer and set as remote description");
-                            console.log("connection state: " + localConnection.connectionState);
+                            console.log("connection state: " + peerConnection.connectionState);
                             break;
 
                         case 'iceCandidate':
                             let candidate = new RTCIceCandidate(jsonObj.candidate);
-                            await localConnection.addIceCandidate(candidate);
+                            await peerConnection.addIceCandidate(candidate);
                             break;
                     }
                 };
@@ -157,8 +153,8 @@
         //bind function with ping button
         document.getElementById('ping').onclick = () =>{
             //console.log("socket state is " + (socket.readyState === WebSocket.OPEN));
-            if(peerConnection.readyState === "open"){
-                peerConnection.send(`Message by peer ${username}`);
+            if(dataChannel.readyState === "open"){
+                dataChannel.send(`Message by peer ${username}`);
                 console.log("data channel is open and a message is sent");
             }else{
                 console.log("data channel is not open!");
@@ -189,19 +185,22 @@
             var targetUsername = document.getElementById('peerUsernameInput').value;
             //socket.send(JSON.stringify({type: 'offer', message: `Peer message from ${username}`, target: targetUsername, sender: username})); DEBUG
             setupWebRTC(targetUsername);
-            console.log(`send offer to peer ${targetUsername}`);
         }
 
 
         //webrtc set up, sender side
         async function setupWebRTC(targetUsername){
+            if(!userlist.includes(targetUsername)){
+                console.log("ERROR, the user you are trying to call does not exist!");
+                return;
+            }
+
             // Create the RTCPeerConnection
-            localConnection = new RTCPeerConnection();
+            peerConnection = new RTCPeerConnection();
 
             
             // Create a data channel for file transfer
-            const dataChannel = localConnection.createDataChannel('fileTransfer');
-            peerConnection = dataChannel;
+            dataChannel = peerConnection.createDataChannel('fileTransfer');
 
             // Handle data channel events
             dataChannel.onopen = () => {
@@ -217,17 +216,19 @@
             };
 
             // Set up ICE candidate handler
-            localConnection.onicecandidate = ({ candidate }) => {
-                console.log("localConnection has received icecandidate");
+            peerConnection.onicecandidate = ({ candidate }) => {
+                console.log("peerConnection has received icecandidate");
                 if (candidate) {
                     socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: targetUsername , sender: username}));
                 }
             };
 
             // Create and send SDP offer to target
-            const offer = await localConnection.createOffer();
-            await localConnection.setLocalDescription(offer);
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
             socket.send(JSON.stringify({ type: 'offer', offer: offer, target: targetUsername, sender: username}));
+
+            console.log(`send offer to peer ${targetUsername}`);
         }
 
         //bind function with disconnect button
