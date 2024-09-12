@@ -9,28 +9,40 @@
  </head>
  <body>
     <div id="main">
-        <div>
-            <input id="usernameInput" value="asd"/>
-            <button id="connect">Connect</button>
+        <div id="connectionUI">
+            <h2>Connection</h2>
+            <div>
+                <input id="usernameInput" value="asd"/>
+                <button id="connect">Connect</button>
+            </div>
+     
+            <div>
+                <input id="peerUsernameInput"/>
+                <button id="sendPeer">Send Peer</button>
+            </div>
+    
+            <button id="ping">Ping</button>
+    
+            <button id="disconnect">Disconnect</button>
+    
+            <div id="userlistDiv">
+                <h2>Active Users</h2>
+                <ul id="userList"></ul>
+            </div>
         </div>
 
-        <button id="sendFile">Send File</button>
-        
-        <div>
-            <input id="peerUsernameInput"/>
-            <button id="sendPeer">Send Peer</button>
+
+        <div id="fileTransferUI">
+            <h2>File Transfer</h2>
+            <input type="file" id="fileInput">
+            <p id="fileName">File: N/A</p>
+            <p id="fileSize">Size: N/A</p>
+            <progress id="sendProgress" value="0" max="100"></progress>
+            <p id="sendStatus">Status: Not started</p>
+            <button id="sendFile">Send File</button>
         </div>
-
-        <button id="ping">Ping</button>
-
-        <button id="disconnect">Disconnect</button>
-
-        <div id="userlistDiv">
-            <h2>Active Users</h2>
-            <ul id="userList"></ul>
-        </div>
-
     </div>
+
     <script>
         /*
             Unresolved BUG
@@ -50,7 +62,7 @@
         let userlist = [];        //list of usernames, including self
 
         //bind connection with connect button
-        document.getElementById('connect').onclick = connectWebSocket;
+        document.getElementById('connect').onclick = () => connectWebSocket();
         function connectWebSocket(){
             username = document.getElementById('usernameInput').value;
             console.log("username = " + username);
@@ -119,7 +131,29 @@
                                 } 
                                 
                                 dataChannel.onmessage = (event) => {
-                                    console.log("Received peer message from data channel:" + event.data);
+                                    const jsonObj = JSON.parse(event.data);
+                                    switch(jsonObj.type){
+                                        case 'metadata':
+                                            fileNameElement.textContent = `File: ${jsonObj.fileName}`;
+                    
+                                            let sizeUnitArray = ["byte", "KB", "MB", "GB"];
+                                            let sizeUnit = 0;
+                                            let sizeDisplay = jsonObj.fileSize;
+                                            for(let i=0; i<4; i++){
+                                                if(sizeDisplay >= 1024){
+                                                    sizeDisplay /= 1024;
+                                                    sizeUnit++;
+                                                }
+                                            }
+
+                                            fileSizeElement.textContent = `Size: ${sizeDisplay.toFixed(2)} ${sizeUnitArray[sizeUnit]}`;
+                                            console.log("data channel: file metadata received!");
+                                            break;
+
+                                        default:
+                                            console.log("DEBUG data channel: unexpected jsonObj data type!");
+                                    }
+                                    //console.log("Received peer message from data channel:" + event.data);
                                 }   
                             }
                             break;
@@ -151,8 +185,21 @@
         }
         
         //bind function with ping button
+        //ping websocket server, and the peer connection webrtc data channel
         document.getElementById('ping').onclick = () =>{
             //console.log("socket state is " + (socket.readyState === WebSocket.OPEN));
+            if (socket.readyState === WebSocket.OPEN) {
+                let message = {
+                    text: 'A friendly message sent by client side',
+                    type: 'message'
+                }
+
+                socket.send(JSON.stringify(message));
+                console.log('Websocket connection is open, a message sent to server');
+            } else {
+                console.log('WebSocket connection is not open');
+            }
+
             if(dataChannel.readyState === "open"){
                 dataChannel.send(`Message by peer ${username}`);
                 console.log("data channel is open and a message is sent");
@@ -162,25 +209,9 @@
         }
 
 
-        //bind function with sendFile button
-        document.getElementById('sendFile').onclick = sendMessage;
-        function sendMessage(){
-            if (socket.readyState === WebSocket.OPEN) {
-                let message = {
-                    text: 'A friendly message sent by client side',
-                    type: 'message'
-                }
-
-                socket.send(JSON.stringify(message));
-                console.log('Message sent to server');
-            } else {
-                console.log('WebSocket connection is not open');
-            }
-        }
-        
         //bind function with sendPeer button
         //send webRTC offer via websocket
-        document.getElementById('sendPeer').onclick = sendPeer;
+        document.getElementById('sendPeer').onclick = () => sendPeer();
         function sendPeer(){
             var targetUsername = document.getElementById('peerUsernameInput').value;
             //socket.send(JSON.stringify({type: 'offer', message: `Peer message from ${username}`, target: targetUsername, sender: username})); DEBUG
@@ -205,14 +236,14 @@
             // Handle data channel events
             dataChannel.onopen = () => {
                 console.log('Data channel is open');
-                const message = `Hello from ${username}`;
-                dataChannel.send(message);
-                console.log(`Sent message: ${message}`);
+                //const message = `Hello from ${username}`;
+                //dataChannel.send(message);
+                //console.log(`Sent message: ${message}`);
             }
             
 
             dataChannel.onmessage = (event) => {
-                console.log('Received file:', event.data);  // Handle the received file
+
             };
 
             // Set up ICE candidate handler
@@ -266,6 +297,72 @@
             }
             userlistLog += "]";
             console.log(userlistLog);
+        }
+
+
+
+        /*
+            File Handling 
+        */
+        let fileToSend = null;
+        let receivedChunks = [];
+        let fileMetadata = null;
+        let receivedBytes = 0;
+
+        // DOM elements for file handling
+        const fileInput = document.getElementById('fileInput');
+        const sendProgress = document.getElementById('sendProgress');
+        const sendStatus = document.getElementById('sendStatus');
+        const fileNameElement = document.getElementById('fileName');
+        const fileSizeElement = document.getElementById('fileSize');
+
+
+
+        // --- File Selection (Sender) ---
+        fileInput.addEventListener('change', (event) => {
+            fileToSend = event.target.files[0];
+            if (fileToSend) {
+                fileNameElement.textContent = `File: ${fileToSend.name}`;
+                
+                let sizeUnitArray = ["byte", "KB", "MB", "GB"];
+                let sizeUnit = 0;
+                let sizeDisplay = fileToSend.size;
+                for(let i=0; i<4; i++){
+                    if(sizeDisplay >= 1024){
+                        sizeDisplay /= 1024;
+                        sizeUnit++;
+                    }
+                }
+
+                fileSizeElement.textContent = `Size: ${sizeDisplay.toFixed(2)} ${sizeUnitArray[sizeUnit]}`;
+            }
+        });
+
+        function sendFileMetadata(file){
+            const metadata = {
+                type: 'metadata', 
+                fileName: file.name,
+                fileSize: file.size,
+                fileType: file.type
+            };
+            dataChannel.send(JSON.stringify(metadata)); //DEBUG
+        }
+
+        document.getElementById('sendFile').onclick = () => sendFile(fileToSend);
+        function sendFile(file){
+            const chunkSize = 16 * 1024;  // 16 KB per chunk
+            const fileReader = new FileReader();
+
+            let offset = 0;
+
+            console.log("DEBUG function triggered");
+            sendFileMetadata(fileToSend);
+
+            /*
+            fileReader.onload = (event) => {
+                
+            }
+            */
         }
 
     </script>

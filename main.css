@@ -8,7 +8,13 @@ body {
 
 #main{
     display: flex;
-    gap: 50px;
+    gap: 100px;
+    flex-direction: row;
+}
+
+#connectionUI{
+    display: flex;
+    gap: 30px;
     flex-direction: column;
 }
 
