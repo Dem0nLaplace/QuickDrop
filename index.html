@@ -40,6 +40,8 @@
             <progress id="sendProgress" value="0" max="100"></progress>
             <p id="sendStatus">Status: Not started</p>
             <button id="sendFile">Send File</button>
+            <button id="channelDisconnect">Disconnect</button>
+            <a id="downloadLink" style="display: none;">Download</a>
         </div>
     </div>
 
@@ -131,28 +133,52 @@
                                 } 
                                 
                                 dataChannel.onmessage = (event) => {
-                                    const jsonObj = JSON.parse(event.data);
-                                    switch(jsonObj.type){
-                                        case 'metadata':
-                                            fileNameElement.textContent = `File: ${jsonObj.fileName}`;
-                    
-                                            let sizeUnitArray = ["byte", "KB", "MB", "GB"];
-                                            let sizeUnit = 0;
-                                            let sizeDisplay = jsonObj.fileSize;
-                                            for(let i=0; i<4; i++){
-                                                if(sizeDisplay >= 1024){
-                                                    sizeDisplay /= 1024;
-                                                    sizeUnit++;
-                                                }
+                                    if(typeof event.data === 'string'){ //receive metadata
+                                        const jsonObj = JSON.parse(event.data);
+                                        fileNameElement.textContent = `File: ${jsonObj.fileName}`;
+
+                                        fileSize = jsonObj.fileSize;
+                                        fileType = jsonObj.fileType;
+                                        fileName = jsonObj.fileName;
+
+                                        let sizeUnitArray = ["byte", "KB", "MB", "GB"];
+                                        let sizeUnit = 0;
+                                        let sizeDisplay = jsonObj.fileSize;
+
+                                        for(let i=0; i<4; i++){
+                                            if(sizeDisplay >= 1024){
+                                                sizeDisplay /= 1024;
+                                                sizeUnit++;
                                             }
+                                        }
 
-                                            fileSizeElement.textContent = `Size: ${sizeDisplay.toFixed(2)} ${sizeUnitArray[sizeUnit]}`;
-                                            console.log("data channel: file metadata received!");
-                                            break;
+                                        fileSizeElement.textContent = `Size: ${sizeDisplay.toFixed(2)} ${sizeUnitArray[sizeUnit]}`;
+                                        console.log("data channel: file metadata received!");
 
-                                        default:
-                                            console.log("DEBUG data channel: unexpected jsonObj data type!");
                                     }
+                                    //else(event.data instanceof ArrayBuffer){
+
+                                    else{    
+                                        receivedChunks.push(event.data);
+                                        receivedBytes += event.data.byteLength;
+                                        console.log(event.data);
+                                        
+                                        console.log("DEBUG: received byteLength = " + event.data.byteLength);
+                                        const percentComplete = (receivedBytes/fileSize) *100;  //DEBUG: poorly used variable (read)
+                                        sendProgress.value = percentComplete;
+                                        sendStatus.textContent = `Status: ${percentComplete.toFixed(2)}% received`;
+
+                                        if (receivedBytes === fileSize) {
+                                            sendStatus.textContent = 'Status: Transfer complete';
+                                            reconstructAndDownloadFile();  // File is fully received
+                                        }
+                                    }
+                                    /*
+                                    else{
+                                        console.log("DEBUG data channel: unexpected data type!");
+                                    }
+                                        */
+                                                                       
                                     //console.log("Received peer message from data channel:" + event.data);
                                 }   
                             }
@@ -306,8 +332,11 @@
         */
         let fileToSend = null;
         let receivedChunks = [];
-        let fileMetadata = null;
+        //let fileMetadata = null;
         let receivedBytes = 0;
+        let fileSize = 0;
+        let fileType = null;
+        let fileName = null;
 
         // DOM elements for file handling
         const fileInput = document.getElementById('fileInput');
@@ -358,11 +387,52 @@
             console.log("DEBUG function triggered");
             sendFileMetadata(fileToSend);
 
-            /*
+            
             fileReader.onload = (event) => {
-                
+                const chunk = event.target.result;
+                //dataChannel.send(JSON.stringify({type: 'chunk', data: chunk}));
+                dataChannel.send(chunk);
+                offset += chunkSize;
+
+                console.log(chunk);
+                console.log("chunk size = " +  chunk.byteLength);
+
+                const percentComplete = (offset/file.size)*100;
+                sendProgress.value = percentComplete;
+                sendStatus.textContent = `Status: ${percentComplete.toFixed(2)}% sent`;
+
+                if(offset < file.size){
+                    readNextChunk();
+                }else{
+                    sendStatus.textContent = 'Status: Transfer Complete';
+                    console.log('File sent successfully');
+                }
+            };
+
+            function readNextChunk() {
+                const slice = file.slice(offset, offset + chunkSize);
+                fileReader.readAsArrayBuffer(slice);  // Read the chunk as ArrayBuffer
             }
-            */
+
+            readNextChunk();  // Start reading the first chunk
+        }
+
+        //bind function with disconnect button in file transfer section
+        document.getElementById('channelDisconnect').onclick = () =>{
+            dataChannel.close();
+            console.log("peer data channel disconnected");
+        }
+
+        function reconstructAndDownloadFile() {
+            const blob = new Blob(receivedChunks, { fileType });
+            const downloadURL = URL.createObjectURL(blob);
+
+            const downloadLink = document.getElementById('downloadLink');
+            // Show download link
+            downloadLink.href = downloadURL;
+            downloadLink.download = fileName;
+            downloadLink.style.display = 'inline';
+            downloadLink.textContent = `Download ${fileName}`;
         }
 
     </script>
