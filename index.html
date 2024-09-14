@@ -49,6 +49,7 @@
         /*
             Unresolved BUG
 
+            #1: When sending large files, the program errors out with RTCdata channel is full
 
         */
 
@@ -123,7 +124,7 @@
                                 }
                             };
 
-                            // Set up data channel
+                            // Set up data channel for receiver
                             peerConnection.ondatachannel = (event) => {
                                 dataChannel = event.channel;
                                 console.log("received data channel, state = " + dataChannel.readyState);
@@ -161,9 +162,9 @@
                                     else{    
                                         receivedChunks.push(event.data);
                                         receivedBytes += event.data.byteLength;
-                                        console.log(event.data);
+                                        //console.log(event.data);  DEBUG
                                         
-                                        console.log("DEBUG: received byteLength = " + event.data.byteLength);
+                                        //console.log("DEBUG: received byteLength = " + event.data.byteLength); DEBUG
                                         const percentComplete = (receivedBytes/fileSize) *100;  //DEBUG: poorly used variable (read)
                                         sendProgress.value = percentComplete;
                                         sendStatus.textContent = `Status: ${percentComplete.toFixed(2)}% received`;
@@ -266,7 +267,6 @@
                 //dataChannel.send(message);
                 //console.log(`Sent message: ${message}`);
             }
-            
 
             dataChannel.onmessage = (event) => {
 
@@ -337,6 +337,7 @@
         let fileSize = 0;
         let fileType = null;
         let fileName = null;
+        let sendingPaused = false;
 
         // DOM elements for file handling
         const fileInput = document.getElementById('fileInput');
@@ -377,9 +378,10 @@
             dataChannel.send(JSON.stringify(metadata)); //DEBUG
         }
 
+
         document.getElementById('sendFile').onclick = () => sendFile(fileToSend);
         function sendFile(file){
-            const chunkSize = 16 * 1024;  // 16 KB per chunk
+            const chunkSize = 128 * 1024;  // 128 KB per chunk
             const fileReader = new FileReader();
 
             let offset = 0;
@@ -387,31 +389,51 @@
             console.log("DEBUG function triggered");
             sendFileMetadata(fileToSend);
 
+            // Set a threshold (in bytes) for when the `bufferedamountlow` event should be fired
+            dataChannel.bufferedAmountLowThreshold = 1024*1024;  // 1 MB
+            console.log("DEBUG: buffered amount low threshold = " + dataChannel.bufferedAmountLowThreshold);
+
+            // Monitor when the buffered amount is low, and resume sending data
+            dataChannel.onbufferedamountlow = () =>{
+                if(sendingPaused){
+                    console.log("Buffer cleared, resuming file transfer...");
+                    sendingPaused = false;
+                    readNextChunk();
+                }
+            }
             
             fileReader.onload = (event) => {
                 const chunk = event.target.result;
-                //dataChannel.send(JSON.stringify({type: 'chunk', data: chunk}));
-                dataChannel.send(chunk);
-                offset += chunkSize;
+                
+                if (dataChannel.bufferedAmount < dataChannel.bufferedAmountLowThreshold) {
+                    dataChannel.send(chunk);    //do not send json because chunk is binary and can't be serialized
 
-                console.log(chunk);
-                console.log("chunk size = " +  chunk.byteLength);
+                    offset += chunkSize;
 
-                const percentComplete = (offset/file.size)*100;
-                sendProgress.value = percentComplete;
-                sendStatus.textContent = `Status: ${percentComplete.toFixed(2)}% sent`;
+                    //console.log(chunk);   DEBUG
+                    //console.log("chunk size = " +  chunk.byteLength); DEBUG
 
-                if(offset < file.size){
-                    readNextChunk();
+                    const percentComplete = (offset/file.size)*100;
+                    sendProgress.value = percentComplete;
+                    sendStatus.textContent = `Status: ${percentComplete.toFixed(2)}% sent`;
+
+                    if(offset < file.size){
+                        readNextChunk();
+                    }else{
+                        sendStatus.textContent = 'Status: Transfer Complete';
+                        console.log('File sent successfully');
+                    }
                 }else{
-                    sendStatus.textContent = 'Status: Transfer Complete';
-                    console.log('File sent successfully');
+                    console.log(`Buffer full: ${dataChannel.bufferedAmount}, pausing...`);
+                    sendingPaused = true;
                 }
             };
 
             function readNextChunk() {
-                const slice = file.slice(offset, offset + chunkSize);
-                fileReader.readAsArrayBuffer(slice);  // Read the chunk as ArrayBuffer
+                if (!sendingPaused) {
+                    const slice = file.slice(offset, offset + chunkSize);
+                    fileReader.readAsArrayBuffer(slice);  // Read the chunk as ArrayBuffer
+                }
             }
 
             readNextChunk();  // Start reading the first chunk
@@ -431,7 +453,7 @@
             // Show download link
             downloadLink.href = downloadURL;
             downloadLink.download = fileName;
-            downloadLink.style.display = 'inline';
+            downloadLink.style.display = 'flex';
             downloadLink.textContent = `Download ${fileName}`;
         }
 
