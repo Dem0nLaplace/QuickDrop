@@ -117,7 +117,15 @@ wss.on('connection', (ws) => {
 
             case 'iceCandidate':
                 sendToOneUser(jsonObj.target, jsonObj);
+                console.log("icecandidate is exchanged!, target is " + jsonObj.target);
                 break;
+
+            case 'iceready':
+                sendToOneUser(jsonObj.target, jsonObj);
+                break;
+
+            default:
+                console.log("ERROR! Unknown message type!");
         }    
     });
 

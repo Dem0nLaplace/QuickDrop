@@ -50,6 +50,10 @@
             Unresolved BUG
 
             #1: When sending large files, the program errors out with RTCdata channel is full
+                    issue is partly solved with adding flow control, but still not stable
+            #2 The worry that the poorly written receiver code would make all the received chunks
+                store in memory, making the program eating too much memory
+            #3 Handling peer user disconnecting
 
         */
 
@@ -106,7 +110,10 @@
 
                         case 'offer':   //webrtc set up for receiver                     
                             // Create RTCPeerConnection
-                            peerConnection = new RTCPeerConnection();
+                            peerConnection = new RTCPeerConnection({
+                                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]  // Optional: Add STUN for testing
+                                //iceServers: []
+                            });
 
                             // Set the remote description with the incoming offer
                             await peerConnection.setRemoteDescription(new RTCSessionDescription(jsonObj.offer));
@@ -116,13 +123,16 @@
                             await peerConnection.setLocalDescription(answer);
                             socket.send(JSON.stringify({type: 'answer', answer: peerConnection.localDescription, target: jsonObj.sender }));
 
-                            // Handle incoming ICE candidates
+                            console.log("received offer! sending answer back...");
+                            // Handle incoming ICE candidates (moved to iceready for flow control);
+                            /*
                             peerConnection.onicecandidate = ({ candidate }) => {
                                 console.log("peerConnection has received icecandidate");
                                 if (candidate) {
                                     socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: jsonObj.sender}));
                                 }
                             };
+                            */
 
                             // Set up data channel for receiver
                             peerConnection.ondatachannel = (event) => {
@@ -156,10 +166,7 @@
                                         fileSizeElement.textContent = `Size: ${sizeDisplay.toFixed(2)} ${sizeUnitArray[sizeUnit]}`;
                                         console.log("data channel: file metadata received!");
 
-                                    }
-                                    //else(event.data instanceof ArrayBuffer){
-
-                                    else{    
+                                    }else{    
                                         receivedChunks.push(event.data);
                                         receivedBytes += event.data.byteLength;
                                         //console.log(event.data);  DEBUG
@@ -173,13 +180,7 @@
                                             sendStatus.textContent = 'Status: Transfer complete';
                                             reconstructAndDownloadFile();  // File is fully received
                                         }
-                                    }
-                                    /*
-                                    else{
-                                        console.log("DEBUG data channel: unexpected data type!");
-                                    }
-                                        */
-                                                                       
+                                    }                                  
                                     //console.log("Received peer message from data channel:" + event.data);
                                 }   
                             }
@@ -189,12 +190,66 @@
                             await peerConnection.setRemoteDescription(new RTCSessionDescription(jsonObj.answer));
                             console.log("Received answer and set as remote description");
                             console.log("connection state: " + peerConnection.connectionState);
-                            break;
+                            console.log("ready to exchange icecandidate");
 
-                        case 'iceCandidate':
-                            let candidate = new RTCIceCandidate(jsonObj.candidate);
-                            await peerConnection.addIceCandidate(candidate);
+                            var targetUsername = document.getElementById('peerUsernameInput').value;
+                            
+                            peerConnection.onicecandidate = ({ candidate }) => {    /* ready to exchange icecandidate, sender side*/
+                                socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: targetUsername}));
+                                if (candidate) {
+                                    console.log(`found new icecandidate, type ${candidate.candidate} , sending`);
+                                }else{
+                                    console.log("ERROR! No icecandidate!");
+                                }
+                            };
+                            
+                            peerConnection.onicegatheringstatechange = () => {
+                                console.log("ICE Gathering State:", peerConnection.iceGatheringState);
+                            };
+
+                            peerConnection.onconnectionstatechange = () => {
+                                console.log('PeerC onnection State:', peerConnection.connectionState);
+                            };
+
+                            socket.send(JSON.stringify({type: 'iceready', target: targetUsername, sender: username}));
                             break;
+                        
+                        case 'iceready':    /* ready to exchange icecandidate, receiver side */          
+                            console.log("ready to exchange icecandidate")
+                            peerConnection.onicecandidate = ({ candidate }) => {   
+                                socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: jsonObj.sender}));
+                                if (candidate) {
+                                    console.log(`found new icecandidate, type ${candidate.candidate} , sending`);
+                                }else{
+                                    console.log("ERROR! No icecandidate!");
+                                }
+                            };
+
+                            peerConnection.onicegatheringstatechange = () => {
+                                console.log("ICE Gathering State:", peerConnection.iceGatheringState);
+                            };
+                            
+                            peerConnection.onconnectionstatechange = () => {
+                                console.log('PeerConnection State:', peerConnection.connectionState);
+                            };
+                            
+                            break;
+                            
+                        case 'iceCandidate':
+                            console.log("peerConnection has received icecandidate");
+                            let candidate = new RTCIceCandidate(jsonObj.candidate);
+                            try{
+                                await peerConnection.addIceCandidate(candidate);
+                                console.log('ICE Candidate added successfully');
+                            }catch(e){
+                                console.error('Error adding ICE Candidate', e);
+                            }
+                            
+                            
+                            break;
+                        
+                        default:
+                            console.log("ERROR, unrecognized signal!");
                     }
                 };
         
@@ -254,7 +309,10 @@
             }
 
             // Create the RTCPeerConnection
-            peerConnection = new RTCPeerConnection();
+            peerConnection = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]  // Optional: Add STUN for testing
+                //iceServers: []
+            });
 
             
             // Create a data channel for file transfer
@@ -272,18 +330,20 @@
 
             };
 
-            // Set up ICE candidate handler
+            // Create and send SDP offer to target
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            socket.send(JSON.stringify({ type: 'offer', offer: offer, target: targetUsername, sender: username}));
+
+            // Set up ICE candidate handler (moved to iceready for flowcontrol)
+            /*
             peerConnection.onicecandidate = ({ candidate }) => {
                 console.log("peerConnection has received icecandidate");
                 if (candidate) {
                     socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: targetUsername , sender: username}));
                 }
             };
-
-            // Create and send SDP offer to target
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-            socket.send(JSON.stringify({ type: 'offer', offer: offer, target: targetUsername, sender: username}));
+            */
 
             console.log(`send offer to peer ${targetUsername}`);
         }
@@ -381,9 +441,10 @@
 
         document.getElementById('sendFile').onclick = () => sendFile(fileToSend);
         function sendFile(file){
-            const chunkSize = 64 * 1024;  // 128 KB per chunk
+            const chunkSize = 64 * 1024;  // 64 KB per chunk
             const fileReader = new FileReader();
-            const sendLimit = 1024*1024;   // 1 MB
+            const sendLimit = 1024 * 1024; // 1 MB
+
             let offset = 0;
 
             console.log("DEBUG function triggered");
