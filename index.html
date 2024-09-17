@@ -118,9 +118,12 @@
 
                             // Handle incoming ICE candidates
                             peerConnection.onicecandidate = ({ candidate }) => {
-                                console.log("peerConnection has received icecandidate");
+                                console.log("new iceCandidate found");
                                 if (candidate) {
                                     socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: jsonObj.sender}));
+                                    console.log(`found new icecandidate, type ${candidate.candidate} , sending`);
+                                }else{
+                                    console.log("NULL iceCandidate!");
                                 }
                             };
 
@@ -192,6 +195,7 @@
                             break;
 
                         case 'iceCandidate':
+                            console.log("peerConnection has received new iceCandidate");
                             let candidate = new RTCIceCandidate(jsonObj.candidate);
                             await peerConnection.addIceCandidate(candidate);
                             break;
@@ -274,9 +278,11 @@
 
             // Set up ICE candidate handler
             peerConnection.onicecandidate = ({ candidate }) => {
-                console.log("peerConnection has received icecandidate");
                 if (candidate) {
-                    socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: targetUsername , sender: username}));
+                    socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: targetUsername, sender: username}));
+                    console.log(`found new icecandidate, type ${candidate.candidate} , sending`);
+                }else{
+                    console.log("NULL iceCandidate!");
                 }
             };
 
