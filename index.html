@@ -381,22 +381,22 @@
 
         document.getElementById('sendFile').onclick = () => sendFile(fileToSend);
         function sendFile(file){
-            const chunkSize = 128 * 1024;  // 128 KB per chunk
+            const chunkSize = 64 * 1024;  // 128 KB per chunk
             const fileReader = new FileReader();
-
+            const sendLimit = 1024*1024;   // 1 MB
             let offset = 0;
 
             console.log("DEBUG function triggered");
             sendFileMetadata(fileToSend);
 
             // Set a threshold (in bytes) for when the `bufferedamountlow` event should be fired
-            dataChannel.bufferedAmountLowThreshold = 1024*1024;  // 1 MB
+            dataChannel.bufferedAmountLowThreshold = 512*1024;  // 512 KB
             console.log("DEBUG: buffered amount low threshold = " + dataChannel.bufferedAmountLowThreshold);
 
             // Monitor when the buffered amount is low, and resume sending data
             dataChannel.onbufferedamountlow = () =>{
                 if(sendingPaused){
-                    console.log("Buffer cleared, resuming file transfer...");
+                    //console.log("Buffer cleared, resuming file transfer...");
                     sendingPaused = false;
                     readNextChunk();
                 }
@@ -405,7 +405,7 @@
             fileReader.onload = (event) => {
                 const chunk = event.target.result;
                 
-                if (dataChannel.bufferedAmount < dataChannel.bufferedAmountLowThreshold) {
+                if (dataChannel.bufferedAmount < sendLimit) {
                     dataChannel.send(chunk);    //do not send json because chunk is binary and can't be serialized
 
                     offset += chunkSize;
@@ -424,7 +424,7 @@
                         console.log('File sent successfully');
                     }
                 }else{
-                    console.log(`Buffer full: ${dataChannel.bufferedAmount}, pausing...`);
+                    //console.log(`Buffer full: ${dataChannel.bufferedAmount}, pausing...`);
                     sendingPaused = true;
                 }
             };
