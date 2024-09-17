@@ -124,15 +124,16 @@
                             socket.send(JSON.stringify({type: 'answer', answer: peerConnection.localDescription, target: jsonObj.sender }));
 
                             console.log("received offer! sending answer back...");
-                            // Handle incoming ICE candidates (moved to iceready for flow control);
-                            /*
+                            // Handle incoming ICE candidates (moved to iceready for flow control) (moved back)
+                            
                             peerConnection.onicecandidate = ({ candidate }) => {
                                 console.log("peerConnection has received icecandidate");
                                 if (candidate) {
+                                    console.log("new icecandidate found: " + candidate.candidate);
                                     socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: jsonObj.sender}));
                                 }
                             };
-                            */
+                            
 
                             // Set up data channel for receiver
                             peerConnection.ondatachannel = (event) => {
@@ -194,7 +195,8 @@
 
                             var targetUsername = document.getElementById('peerUsernameInput').value;
                             
-                            peerConnection.onicecandidate = ({ candidate }) => {    /* ready to exchange icecandidate, sender side*/
+                            /*
+                            peerConnection.onicecandidate = ({ candidate }) => {    // ready to exchange icecandidate, sender side
                                 socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: targetUsername}));
                                 if (candidate) {
                                     console.log(`found new icecandidate, type ${candidate.candidate} , sending`);
@@ -202,6 +204,7 @@
                                     console.log("ERROR! No icecandidate!");
                                 }
                             };
+                            */
                             
                             peerConnection.onicegatheringstatechange = () => {
                                 console.log("ICE Gathering State:", peerConnection.iceGatheringState);
@@ -214,7 +217,8 @@
                             socket.send(JSON.stringify({type: 'iceready', target: targetUsername, sender: username}));
                             break;
                         
-                        case 'iceready':    /* ready to exchange icecandidate, receiver side */          
+                        case 'iceready':    /* ready to exchange icecandidate, receiver side */    
+                            /*      
                             console.log("ready to exchange icecandidate")
                             peerConnection.onicecandidate = ({ candidate }) => {   
                                 socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: jsonObj.sender}));
@@ -224,6 +228,7 @@
                                     console.log("ERROR! No icecandidate!");
                                 }
                             };
+                            */
 
                             peerConnection.onicegatheringstatechange = () => {
                                 console.log("ICE Gathering State:", peerConnection.iceGatheringState);
@@ -314,7 +319,15 @@
                 //iceServers: []
             });
 
-            
+            // Set up ICE candidate handler (moved to iceready for flowcontrol)(Moved back)
+            peerConnection.onicecandidate = ({ candidate }) => {
+                console.log("peerConnection has received icecandidate");
+                if (candidate) {
+                    console.log("new icecandidate found: " + candidate.candidate);
+                    socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: targetUsername , sender: username}));
+                }
+            };
+
             // Create a data channel for file transfer
             dataChannel = peerConnection.createDataChannel('fileTransfer');
 
@@ -335,15 +348,8 @@
             await peerConnection.setLocalDescription(offer);
             socket.send(JSON.stringify({ type: 'offer', offer: offer, target: targetUsername, sender: username}));
 
-            // Set up ICE candidate handler (moved to iceready for flowcontrol)
-            /*
-            peerConnection.onicecandidate = ({ candidate }) => {
-                console.log("peerConnection has received icecandidate");
-                if (candidate) {
-                    socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: targetUsername , sender: username}));
-                }
-            };
-            */
+
+            
 
             console.log(`send offer to peer ${targetUsername}`);
         }
