@@ -29,6 +29,7 @@
                 <h2>Active Users</h2>
                 <ul id="userList"></ul>
             </div>
+            <div id="qrcode"></div>
         </div>
 
 
@@ -44,6 +45,8 @@
             <a id="downloadLink" style="display: none;">Download</a>
         </div>
     </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <script>
         /*
@@ -63,6 +66,7 @@
         let peerConnection = null; //webrtc connection
         let dataChannel = null;     //webrtc data channel connection
         let userlist = [];        //list of usernames, including self
+        let shareLink = "http://192.168.1.158:8000";
 
         //bind connection with connect button
         document.getElementById('connect').onclick = () => connectWebSocket();
@@ -331,6 +335,10 @@
             console.log(userlistLog);
         }
 
+        generateQRCode();
+        function generateQRCode(){
+            new QRCode(document.getElementById("qrcode"), shareLink);
+        }
 
 
         /*

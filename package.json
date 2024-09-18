@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/Dem0nLaplace/QuickDrop#readme",
   "dependencies": {
+    "qrcode": "^1.5.4",
     "uuid": "^10.0.0",
     "ws": "^8.18.0"
   }
