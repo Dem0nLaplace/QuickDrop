@@ -40,6 +40,18 @@ http.createServer((request, response) => {
             console.log(e);
             response.end();
         }
+    }else if(request.url === '/config.js'){
+        response.writeHead(200, {'Content-Type': 'text/javascript'});
+        try{
+            const config = fs.readFileSync('config.js');
+            response.write(config);
+            response.end();
+        }catch(e){
+            response.statusCode = 404;
+            response.write("Bad Request");
+            console.log(e);
+            response.end();
+        }
     }
 
 

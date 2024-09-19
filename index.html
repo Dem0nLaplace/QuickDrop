@@ -47,7 +47,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
+    <script src="config.js"></script>
     <script>
         /*
             Unresolved BUG
@@ -110,86 +110,85 @@
 
                         case 'offer':   //webrtc set up for receiver                     
                             // Create RTCPeerConnection
-                            peerConnection = new RTCPeerConnection();
+                                try{
+                                    peerConnection = new RTCPeerConnection(
+                                        iceConfiguration
+                                    );
 
-                            // Set the remote description with the incoming offer
-                            await peerConnection.setRemoteDescription(new RTCSessionDescription(jsonObj.offer));
+                                    // Set the remote description with the incoming offer
+                                    await peerConnection.setRemoteDescription(new RTCSessionDescription(jsonObj.offer));
 
-                            // Create an answer to send back to the offerer
-                            const answer = await peerConnection.createAnswer();
-                            await peerConnection.setLocalDescription(answer);
-                            socket.send(JSON.stringify({type: 'answer', answer: peerConnection.localDescription, target: jsonObj.sender }));
+                                    // Create an answer to send back to the offerer
+                                    const answer = await peerConnection.createAnswer();
+                                    await peerConnection.setLocalDescription(answer);
+                                    socket.send(JSON.stringify({type: 'answer', answer: peerConnection.localDescription, target: jsonObj.sender }));
 
-                            // Handle incoming ICE candidates
-                            peerConnection.onicecandidate = ({ candidate }) => {
-                                console.log("new iceCandidate found");
-                                if (candidate) {
-                                    socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: jsonObj.sender}));
-                                    console.log(`found new icecandidate, type ${candidate.candidate} , sending`);
-                                }else{
-                                    console.log("NULL iceCandidate!");
-                                }
-                            };
-
-                            // Set up data channel for receiver
-                            peerConnection.ondatachannel = (event) => {
-                                dataChannel = event.channel;
-                                console.log("received data channel, state = " + dataChannel.readyState);
-                                
-                                dataChannel.onopen = () => {
-                                    console.log("Data channel open");
-                                } 
-                                
-                                dataChannel.onmessage = (event) => {
-                                    if(typeof event.data === 'string'){ //receive metadata
-                                        const jsonObj = JSON.parse(event.data);
-                                        fileNameElement.textContent = `File: ${jsonObj.fileName}`;
-
-                                        fileSize = jsonObj.fileSize;
-                                        fileType = jsonObj.fileType;
-                                        fileName = jsonObj.fileName;
-
-                                        let sizeUnitArray = ["byte", "KB", "MB", "GB"];
-                                        let sizeUnit = 0;
-                                        let sizeDisplay = jsonObj.fileSize;
-
-                                        for(let i=0; i<4; i++){
-                                            if(sizeDisplay >= 1024){
-                                                sizeDisplay /= 1024;
-                                                sizeUnit++;
-                                            }
+                                    // Handle incoming ICE candidates
+                                    peerConnection.onicecandidate = ({ candidate }) => {
+                                        console.log("new iceCandidate found");
+                                        if (candidate) {
+                                            socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: jsonObj.sender}));
+                                            console.log(`found new icecandidate, type ${candidate.candidate} , sending`);
+                                        }else{
+                                            console.log("NULL iceCandidate!");
                                         }
+                                    };
 
-                                        fileSizeElement.textContent = `Size: ${sizeDisplay.toFixed(2)} ${sizeUnitArray[sizeUnit]}`;
-                                        console.log("data channel: file metadata received!");
-
-                                    }
-                                    //else(event.data instanceof ArrayBuffer){
-
-                                    else{    
-                                        receivedChunks.push(event.data);
-                                        receivedBytes += event.data.byteLength;
-                                        //console.log(event.data);  DEBUG
+                                    // Set up data channel for receiver
+                                    peerConnection.ondatachannel = (event) => {
+                                        dataChannel = event.channel;
+                                        console.log("received data channel, state = " + dataChannel.readyState);
                                         
-                                        //console.log("DEBUG: received byteLength = " + event.data.byteLength); DEBUG
-                                        const percentComplete = (receivedBytes/fileSize) *100;  //DEBUG: poorly used variable (read)
-                                        sendProgress.value = percentComplete;
-                                        sendStatus.textContent = `Status: ${percentComplete.toFixed(2)}% received`;
+                                        dataChannel.onopen = () => {
+                                            console.log("Data channel open");
+                                        } 
+                                        
+                                        dataChannel.onmessage = (event) => {
+                                            if(typeof event.data === 'string'){ //receive metadata
+                                                const jsonObj = JSON.parse(event.data);
+                                                fileNameElement.textContent = `File: ${jsonObj.fileName}`;
 
-                                        if (receivedBytes === fileSize) {
-                                            sendStatus.textContent = 'Status: Transfer complete';
-                                            reconstructAndDownloadFile();  // File is fully received
-                                        }
+                                                fileSize = jsonObj.fileSize;
+                                                fileType = jsonObj.fileType;
+                                                fileName = jsonObj.fileName;
+
+                                                let sizeUnitArray = ["byte", "KB", "MB", "GB"];
+                                                let sizeUnit = 0;
+                                                let sizeDisplay = jsonObj.fileSize;
+
+                                                for(let i=0; i<4; i++){
+                                                    if(sizeDisplay >= 1024){
+                                                        sizeDisplay /= 1024;
+                                                        sizeUnit++;
+                                                    }
+                                                }
+
+                                                fileSizeElement.textContent = `Size: ${sizeDisplay.toFixed(2)} ${sizeUnitArray[sizeUnit]}`;
+                                                console.log("data channel: file metadata received!");
+
+                                            }
+                                            //else(event.data instanceof ArrayBuffer){
+
+                                            else{    
+                                                receivedChunks.push(event.data);
+                                                receivedBytes += event.data.byteLength;
+                                                //console.log(event.data);  DEBUG
+                                                
+                                                //console.log("DEBUG: received byteLength = " + event.data.byteLength); DEBUG
+                                                const percentComplete = (receivedBytes/fileSize) *100;  //DEBUG: poorly used variable (read)
+                                                sendProgress.value = percentComplete;
+                                                sendStatus.textContent = `Status: ${percentComplete.toFixed(2)}% received`;
+
+                                                if (receivedBytes === fileSize) {
+                                                    sendStatus.textContent = 'Status: Transfer complete';
+                                                    reconstructAndDownloadFile();  // File is fully received
+                                                }
+                                            }
+                                        }   
                                     }
-                                    /*
-                                    else{
-                                        console.log("DEBUG data channel: unexpected data type!");
-                                    }
-                                        */
-                                                                       
-                                    //console.log("Received peer message from data channel:" + event.data);
-                                }   
-                            }
+                                }catch(e){
+                                    console.error("receiver data channel error: " + e);
+                                }
                             break;
 
                         case 'answer':
@@ -262,8 +261,10 @@
             }
 
             // Create the RTCPeerConnection
-            peerConnection = new RTCPeerConnection();
 
+            peerConnection = new RTCPeerConnection(
+                iceConfiguration
+            );
             
             // Create a data channel for file transfer
             dataChannel = peerConnection.createDataChannel('fileTransfer');
