@@ -52,6 +52,8 @@ button{
 
 /* Styling each user item */
 #userList li {
+    display: flex;
+
     padding: 10px;
     border-bottom: 1px solid #ddd;
     color: #333;
@@ -62,4 +64,19 @@ button{
 #userList li:hover {
     background-color: #e9ecef;
     cursor: pointer;
+}
+
+.connectButton{
+    position: absolute;
+    right: 10px;
+    padding: 5px 10px;
+    font-size: 0.8em;
+    height: 70%;
+    width: 30%;
+    align-self: center;
+    display: none;
+}
+
+.userList:hover .connectButton{
+    display: inline;
 }

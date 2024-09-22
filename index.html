@@ -312,7 +312,8 @@
         
         function updateUserList(userlist){
             const userListDiv = document.getElementById('userList');
-    
+            userListDiv.classList.add('userList');
+
             // Clear the current list
             userListDiv.innerHTML = '';
 
@@ -320,8 +321,47 @@
             userlist.forEach(user => {
                 const listItem = document.createElement('li');
                 listItem.textContent = user;
+                listItem.style.position = 'relative'; // Allows positioning the button inside
                 userListDiv.appendChild(listItem);
+
+                // Create the connect button, exclude self
+                if(user == username){
+                    return;
+                }
+
+                const connectButton = document.createElement('button');
+                connectButton.textContent = 'connect';
+                connectButton.classList.add('connectButton');
+                connectButton.onclick = () =>{
+                    handleConnectButton(listItem, connectButton);
+                    setupWebRTC(user);
+                }
+                
+                listItem.appendChild(connectButton);
             });
+        }
+
+        //remove connection button and add disconnect button
+        function handleConnectButton(listItem, connectButton){
+            listItem.removeChild(connectButton);
+            addDisconnectButton(listItem);
+        }
+
+        function addDisconnectButton(listItem){
+            const disconnectButton = document.createElement('button');
+            disconnectButton.textContent = 'disconnect';
+            disconnectButton.classList.add('connectButton');   //same styling as connect button
+            disconnectButton.onclick = () =>{
+                handleDisconnectButton(listItem, disconnectButton);
+            }
+
+            listItem.appendChild(disconnectButton);
+        }
+
+        function handleDisconnectButton(listItem, disconnectButton){
+            listItem.removeChild(disconnectButton);
+            peerConnection.close();
+            console.log("peer connection closed");
         }
 
         function logUserList(userlist){
