@@ -38,6 +38,7 @@
             <input type="file" id="fileInput">
             <p id="fileName">File: N/A</p>
             <p id="fileSize">Size: N/A</p>
+            <p id="transferSpeed">Speed: N/A</p>
             <progress id="sendProgress" value="0" max="100"></progress>
             <p id="sendStatus">Status: Not started</p>
             <button id="sendFile">Send File</button>
@@ -66,7 +67,9 @@
         let peerConnection = null; //webrtc connection
         let dataChannel = null;     //webrtc data channel connection
         let userlist = [];        //list of usernames, including self
-        let shareLink = "http://192.168.1.158:8000";
+        const hostname = window.location.hostname;
+        let shareLink = `http://${hostname}:8000`;
+        console.log("hostname = " + hostname);
 
         //bind connection with connect button
         document.getElementById('connect').onclick = () => connectWebSocket();
@@ -76,7 +79,7 @@
 
 
             if(socket == null || socket.readyState === WebSocket.CLOSED){
-                socket = new WebSocket('ws://192.168.1.158:8080');  //DEBUG: remove this in final product
+                socket = new WebSocket(`ws://${hostname}:8080`);  //DEBUG: remove this in final product
 
                 socket.onopen = () => {
                     console.log('Connected to WebSocket server');
@@ -134,6 +137,9 @@
                                         }
                                     };
 
+                                    var receiving = false;
+                                    let startTime = 0;
+                                    let intervalID = 0;
                                     // Set up data channel for receiver
                                     peerConnection.ondatachannel = (event) => {
                                         dataChannel = event.channel;
@@ -168,8 +174,19 @@
 
                                             }
                                             //else(event.data instanceof ArrayBuffer){
+                                            else{  
+                                                if(!receiving){
+                                                    receiving = true;
+                                                    startTime = Date.now();
+                                                    intervalID = setInterval(updateSpeed, 500);
 
-                                            else{    
+                                                    function updateSpeed(){
+                                                        let speed = (receivedBytes/1024/1024)/((Date.now() - startTime)/1000);  //calculate speed in mb/s
+                                                        transferSpeed.innerHTML = `${speed.toFixed(2)} mb/s`;
+                                                    }
+                                                }
+
+
                                                 receivedChunks.push(event.data);
                                                 receivedBytes += event.data.byteLength;
                                                 //console.log(event.data);  DEBUG
@@ -181,6 +198,7 @@
 
                                                 if (receivedBytes === fileSize) {
                                                     sendStatus.textContent = 'Status: Transfer complete';
+                                                    clearInterval(intervalID);
                                                     reconstructAndDownloadFile();  // File is fully received
                                                 }
                                             }
@@ -400,7 +418,7 @@
         const sendStatus = document.getElementById('sendStatus');
         const fileNameElement = document.getElementById('fileName');
         const fileSizeElement = document.getElementById('fileSize');
-
+        const transferSpeed = document.getElementById('transferSpeed');
 
 
         // --- File Selection (Sender) ---
@@ -420,6 +438,7 @@
                 }
 
                 fileSizeElement.textContent = `Size: ${sizeDisplay.toFixed(2)} ${sizeUnitArray[sizeUnit]}`;
+                fileSize = fileToSend.size;
             }
         });
 
@@ -436,17 +455,29 @@
 
         document.getElementById('sendFile').onclick = () => sendFile(fileToSend);
         function sendFile(file){
-            const chunkSize = 64 * 1024;  // 128 KB per chunk
+            const chunkSize = 64 * 1024;  // 64 KB per chunk
             const fileReader = new FileReader();
-            const sendLimit = 1024*1024;   // 1 MB
+            const sendLimit = 1024*1024;   // 1 MB 
             let offset = 0;
+            let startTime = Date.now();
 
-            console.log("DEBUG function triggered");
             sendFileMetadata(fileToSend);
+
+            //show speed
+            let intervalID = setInterval(updateSpeed, 500);
+            function updateSpeed(){
+                if(offset >= fileSize){
+                    console.log("transfer complete, terminate updating speed");
+                    clearInterval(intervalID);
+                }
+                let speed = (offset/1024/1024)/((Date.now() - startTime)/1000);  //calculate speed in mb/s
+                transferSpeed.innerHTML = `${speed.toFixed(2)} mb/s`;
+            }
+
+
 
             // Set a threshold (in bytes) for when the `bufferedamountlow` event should be fired
             dataChannel.bufferedAmountLowThreshold = 512*1024;  // 512 KB
-            console.log("DEBUG: buffered amount low threshold = " + dataChannel.bufferedAmountLowThreshold);
 
             // Monitor when the buffered amount is low, and resume sending data
             dataChannel.onbufferedamountlow = () =>{
@@ -468,9 +499,10 @@
                     //console.log(chunk);   DEBUG
                     //console.log("chunk size = " +  chunk.byteLength); DEBUG
 
-                    const percentComplete = (offset/file.size)*100;
+                    let percentComplete = (offset/file.size)*100;
                     sendProgress.value = percentComplete;
                     sendStatus.textContent = `Status: ${percentComplete.toFixed(2)}% sent`;
+
 
                     if(offset < file.size){
                         readNextChunk();
