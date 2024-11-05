@@ -48,7 +48,7 @@
 
         <div id="chatBox">
             <h2>Chat</h2>
-            <div id="chatMessages">Tom has joined the lobby.</div>
+            <div id="chatMessages"></div>
             <input id="chatBoxInput"type="text" placeholder="Write a message">
         </div>
     </div>
@@ -561,6 +561,12 @@
         document.getElementById('');
         function sendMessage(){
             var messageText = document.getElementById('chatBoxInput').value;
+
+            if(messageText === ""){
+                console.log("Let's not send empty messages, shall we?");
+                return;
+            }
+
             let newJsonObj = {
                 type: 'message',
                 sender: username,
@@ -568,6 +574,7 @@
             }
             socket.send(JSON.stringify(newJsonObj));
             console.log("message sent");    //DEBUG
+            document.getElementById('chatBoxInput').value = "";
         }
 
 
@@ -576,13 +583,16 @@
             by displaying them in the chatbox
         */
         function receiveMessage(sender, messageText){
-            console.log("function running");    //DEBUG
             const messageElement = document.createElement("div");
-            messageElement.innerHTML = `<b>${sender}</b>: ${messageText}`;
+            if(sender === "server"){
+                messageElement.innerHTML = `${messageText}`;
+            }else{
+                messageElement.innerHTML = `<b>${sender}</b>: ${messageText}`;
+            }
+            
             document.getElementById("chatMessages").appendChild(messageElement);
+            document.getElementById("chatMessages").scrollTop = document.getElementById("chatMessages").scrollHeight;//auto scroll bottom
         }
-
-        receiveMessage("asd", "a friendly testing message");    //DEBUG
 
     </script>
  </body>

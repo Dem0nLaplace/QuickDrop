@@ -59,6 +59,11 @@ wss.on('connection', (ws) => {
                     userData.ws.send(JSON.stringify({type: "userlist", userlist: userlist}));
                 });
                 
+                //send join message to every user
+                userMap.forEach((userData, user) =>{
+                    userData.ws.send(JSON.stringify({type: "message", sender: "server", messageText: `${username} has joined the room`}));
+                });
+
                /*
                 wss.clients.forEach((client) => {
                     if (client !== ws && client.readyState === WebSocket.OPEN) {
@@ -107,6 +112,11 @@ wss.on('connection', (ws) => {
         //send a updated list of all current users to every user
         userMap.forEach((userData, user) =>{
             userData.ws.send(JSON.stringify({type: "userlist", userlist: userlist}));
+        });
+
+        //send leave message to every user
+        userMap.forEach((userData, user) =>{
+            userData.ws.send(JSON.stringify({type: "message", sender: "server", messageText: `${username} has left the room`}));
         });
 
         console.log("A client has disconnected");
