@@ -1,7 +1,8 @@
 // server side code
 
 /*
-    Unresolved BUG
+    This file is no longer maintained
+    Use app.js
 
 
 */

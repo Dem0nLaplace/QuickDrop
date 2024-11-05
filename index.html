@@ -45,6 +45,12 @@
             <button id="channelDisconnect">Disconnect</button>
             <a id="downloadLink" style="display: none;">Download</a>
         </div>
+
+        <div id="chatBox">
+            <h2>Chat</h2>
+            <div id="chatMessages">Tom has joined the lobby.</div>
+            <input id="chatBoxInput"type="text" placeholder="Write a message">
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -95,9 +101,8 @@
                             console.log("assigned uuid: " + jsonObj.uuid);
                             break;
 
-                        case 'message':
-                            const message = jsonObj.text;
-                            console.log('message from server: ' + message);
+                        case 'message': 
+                            receiveMessage(jsonObj.sender, jsonObj.messageText);
                             break;
 
                         case 'reject':
@@ -543,6 +548,41 @@
             downloadLink.style.display = 'flex';
             downloadLink.textContent = `Download ${fileName}`;
         }
+
+        // Event listener for 'Enter' key press in the input box
+        chatBoxInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevents default action (like submitting a form)
+                sendMessage();
+            }
+        });
+
+        //added on 11/4/2024
+        document.getElementById('');
+        function sendMessage(){
+            var messageText = document.getElementById('chatBoxInput').value;
+            let newJsonObj = {
+                type: 'message',
+                sender: username,
+                messageText: messageText
+            }
+            socket.send(JSON.stringify(newJsonObj));
+            console.log("message sent");    //DEBUG
+        }
+
+
+        /*
+            Process incoming messages
+            by displaying them in the chatbox
+        */
+        function receiveMessage(sender, messageText){
+            console.log("function running");    //DEBUG
+            const messageElement = document.createElement("div");
+            messageElement.innerHTML = `<b>${sender}</b>: ${messageText}`;
+            document.getElementById("chatMessages").appendChild(messageElement);
+        }
+
+        receiveMessage("asd", "a friendly testing message");    //DEBUG
 
     </script>
  </body>

@@ -77,7 +77,10 @@ wss.on('connection', (ws) => {
         let jsonObj = JSON.parse(message);
         switch(jsonObj.type){
             case 'message':
-                console.log(`Received message from client ${userid}: ${jsonObj.text}`);
+                console.log(`Received message from client ${userid}: ${jsonObj.messageText}, broadcasting`);
+                userMap.forEach((userData, user) =>{
+                    userData.ws.send(JSON.stringify({type: "message", sender: jsonObj.sender, messageText: jsonObj.messageText}));
+                });
                 break;
 
             case 'offer':
