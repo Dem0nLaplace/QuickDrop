@@ -112,8 +112,13 @@ button{
     border: 1px solid #ccc;
 }
 
-/* Media Queries for Mobile Devices (screens smaller than 768px) */
+/* css styling for drop file box*/
 
+
+
+
+
+/* Media Queries for Mobile Devices (screens smaller than 768px) */
 @media (max-width: 768px) {
     
     body {
@@ -168,4 +173,32 @@ button{
     }
         
 }
-    
+
+/* added 11//6/2024 */
+#overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(128, 128, 128, 0.7); /* Grayish background */
+    display: none;
+    z-index: 999;
+    text-align: center;
+    transition: opacity 0.3s ease-in-out;
+}
+
+#overlay img {
+    margin-top: 20%; /* Center image vertically */
+    max-width: 300px;
+}
+
+#dropArea {
+    border: 2px dashed #ccc;
+    padding: 40px;
+    text-align: center;
+    margin: 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.3s;
+}
