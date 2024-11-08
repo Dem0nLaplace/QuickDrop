@@ -202,3 +202,7 @@ button{
     cursor: pointer;
     transition: border-color 0.3s;
 }
+
+#dropArea:hover{
+    border: 2px solid rgb(15, 138, 210);
+}

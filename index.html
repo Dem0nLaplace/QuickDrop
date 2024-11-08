@@ -83,8 +83,8 @@
         let peerConnection = null; //webrtc connection
         let dataChannel = null;     //webrtc data channel connection
         let userlist = [];        //list of usernames, including self
+        let shareIP = null;       //local ip address of the server, used in generating qr code to share with other users
         const hostname = window.location.hostname;
-        let shareLink = `http://192.168.1.158:8000`;
         console.log("hostname = " + hostname);
 
         //bind connection with connect button
@@ -109,6 +109,8 @@
                         case 'uuid':
                             uuid = jsonObj.uuid;
                             console.log("assigned uuid: " + jsonObj.uuid);
+                            shareIP = "http://" + jsonObj.IP + ":8000"; //example complete link for share http://192.168.0.1:8000
+                            generateQRCode(shareIP);
                             break;
 
                         case 'message': 
@@ -409,8 +411,7 @@
             console.log(userlistLog);
         }
 
-        generateQRCode();
-        function generateQRCode(){
+        function generateQRCode(shareLink){
             new QRCode(document.getElementById("qrcode"), shareLink);
         }
 

@@ -4,6 +4,7 @@ const app = express();
 const WebSocket = require('ws');
 const fs = require('fs');
 const {v4: uuid} = require('uuid');
+const os = require('os');
 
 let userMap = new Map();    //userMap stores username => uuid, ws
 
@@ -20,6 +21,10 @@ const PORT = 8000;
 app.listen(PORT, () => {
     console.log(`Server is running at http://localhost:${PORT}`);
 });
+
+
+const localIP = getLocalIPAddress();
+console.log(`Server's local IP address is: ${localIP}`);
 
 //create web socket server
 const wss = new WebSocket.Server({ port: 8080 });
@@ -41,9 +46,9 @@ wss.on('connection', (ws) => {
                 username = jsonObj.username;
                 userid = uuid();
                 const jsonMessage = {
-                    text: "assigning userid",
                     uuid: userid,
-                    type: 'uuid'
+                    type: 'uuid', 
+                    IP: localIP
                 };
                 ws.send(JSON.stringify(jsonMessage));
 
@@ -153,5 +158,22 @@ function logUserList(userlist){
     console.log(userlistLog);
 }
 
-console.log('WebSocket server running on ws://localhost:8080');
-console.log("Click this link to access html: http://localhost:8000/");
+function getLocalIPAddress() {
+    const networkInterfaces = os.networkInterfaces();
+    
+    for (const interfaceName in networkInterfaces) {
+        const interfaces = networkInterfaces[interfaceName];
+        
+        for (const netInterface of interfaces) {
+            // Look for the IPv4, non-internal (non-localhost) address
+            if (netInterface.family === 'IPv4' && !netInterface.internal) {
+                return netInterface.address;
+            }
+        }
+    }
+    
+    return '127.0.0.1'; // Default to localhost if no external IP found
+}
+
+
+console.log(`Click this link to access html: http://${localIP}:8000/`);
