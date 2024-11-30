@@ -44,15 +44,17 @@
             <button id="sendFile">Send File</button>
             <button id="channelDisconnect">Disconnect</button>
             <a id="downloadLink" style="display: none;">Download</a>
+
+            <!-- added 11/6/2024-->
+            <div id="dropArea">
+                <p>Click here to upload a file or drag it anywhere on the page.</p>
+                <input type="file" id="newFileInput" style="display: none;">
+            </div>
         </div>
 
-        <!-- added 11/6/2024-->
+        
         <div id="overlay">
             <img src="./dropfile.jpg" alt="Drop to upload">
-        </div>
-        <div id="dropArea">
-            <p>Click here to upload a file or drag it anywhere on the page.</p>
-            <input type="file" id="newFileInput" style="display: none;">
         </div>
         
         <div id="chatBox">
@@ -191,8 +193,9 @@
 
                                             }
                                             //else(event.data instanceof ArrayBuffer){
-                                            else{  
-                                                if(!receiving){
+                                            else{  //the data transfered is binary data, the line above cannot catch this type of data, need change in future
+                                                if(!receiving){     //code to set up transfer progress interval when receiving first chunk of data
+                                                    isTransferring = true;
                                                     receiving = true;
                                                     startTime = Date.now();
                                                     intervalID = setInterval(updateSpeed, 500);
@@ -206,9 +209,6 @@
 
                                                 receivedChunks.push(event.data);
                                                 receivedBytes += event.data.byteLength;
-                                                //console.log(event.data);  DEBUG
-                                                
-                                                //console.log("DEBUG: received byteLength = " + event.data.byteLength); DEBUG
                                                 const percentComplete = (receivedBytes/fileSize) *100;  //DEBUG: poorly used variable (read)
                                                 sendProgress.value = percentComplete;
                                                 sendStatus.textContent = `Status: ${percentComplete.toFixed(2)}% received`;
@@ -427,6 +427,7 @@
         let fileType = null;
         let fileName = null;
         let sendingPaused = false;
+        let isTransferring = false;
 
         // DOM elements for file handling
         const fileInput = document.getElementById('fileInput');
@@ -471,6 +472,13 @@
 
         document.getElementById('sendFile').onclick = () => sendFile(fileToSend);
         function sendFile(file){
+            //sanity check, if a file transfer is in progress, break and return
+            if(isTransferring === true){
+                alert("File transfer in progress. Please wait until the current transfer is complete");
+                return;
+            }
+
+            isTransferring = true;
             const chunkSize = 64 * 1024;  // 64 KB per chunk
             const fileReader = new FileReader();
             const sendLimit = 1024*1024;   // 1 MB 
@@ -523,6 +531,7 @@
                     if(offset < file.size){
                         readNextChunk();
                     }else{
+                        isTransferring = false;
                         sendStatus.textContent = 'Status: Transfer Complete';
                         console.log('File sent successfully');
                     }
@@ -558,6 +567,7 @@
             downloadLink.download = fileName;
             downloadLink.style.display = 'flex';
             downloadLink.textContent = `Download ${fileName}`;
+            isTransferring = false;
         }
 
         // Event listener for 'Enter' key press in the input box
