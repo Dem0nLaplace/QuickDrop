@@ -104,6 +104,9 @@ wss.on('connection', (ws) => {
             case 'iceCandidate':
                 sendToOneUser(jsonObj.target, jsonObj);
                 break;
+            
+            case 'stopTransfer':
+                sendToOneUser(jsonObj.target, jsonObj);
         }    
     });
 
@@ -142,7 +145,7 @@ function sendToOneUser(targetUsername, obj){
         target.ws.send(JSON.stringify(obj));
         console.log(`Send message to ${targetUsername}`);
     }else{
-        console.log(`User ${targetUsername} not found!`);
+        console.log(`User [${targetUsername}] not found!`);
     }
 }
 

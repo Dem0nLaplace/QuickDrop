@@ -42,6 +42,7 @@
             <progress id="sendProgress" value="0" max="100"></progress>
             <p id="sendStatus">Status: Not started</p>
             <button id="sendFile">Send File</button>
+            <button id="cancelTransfer">Cancel</button>
             <button id="channelDisconnect">Disconnect</button>
             <a id="downloadLink" style="display: none;">Download</a>
 
@@ -83,6 +84,7 @@
         let uuid = null;            //uuid assigned by websocket server
 
         let peerConnection = null; //webrtc connection
+        let peerUsername = null;    //username of the peer that we are transfering data with
         let dataChannel = null;     //webrtc data channel connection
         let userlist = [];        //list of usernames, including self
         let shareIP = null;       //local ip address of the server, used in generating qr code to share with other users
@@ -97,7 +99,7 @@
 
 
             if(socket == null || socket.readyState === WebSocket.CLOSED){
-                socket = new WebSocket(`ws://${hostname}:8080`);  //DEBUG: remove this in final product
+                socket = new WebSocket(`ws://${hostname}:8080`); 
 
                 socket.onopen = () => {
                     console.log('Connected to WebSocket server');
@@ -170,6 +172,7 @@
                                         
                                         dataChannel.onmessage = (event) => {
                                             if(typeof event.data === 'string'){ //receive metadata
+                                                isTransferring = true;
                                                 const jsonObj = JSON.parse(event.data);
                                                 fileNameElement.textContent = `File: ${jsonObj.fileName}`;
 
@@ -193,9 +196,8 @@
 
                                             }
                                             //else(event.data instanceof ArrayBuffer){
-                                            else{  //the data transfered is binary data, the line above cannot catch this type of data, need change in future
+                                            else{  //the data transfered is binary data, the line above cannot catch this type of data
                                                 if(!receiving){     //code to set up transfer progress interval when receiving first chunk of data
-                                                    isTransferring = true;
                                                     receiving = true;
                                                     startTime = Date.now();
                                                     intervalID = setInterval(updateSpeed, 500);
@@ -236,6 +238,11 @@
                             console.log("peerConnection has received new iceCandidate");
                             let candidate = new RTCIceCandidate(jsonObj.candidate);
                             await peerConnection.addIceCandidate(candidate);
+                            break;
+
+                        case 'stopTransfer':
+                            console.log("transfer canceled");
+                            closeDataChannel();
                             break;
                     }
                 };
@@ -283,7 +290,7 @@
         document.getElementById('sendPeer').onclick = () => sendPeer();
         function sendPeer(){
             var targetUsername = document.getElementById('peerUsernameInput').value;
-            //socket.send(JSON.stringify({type: 'offer', message: `Peer message from ${username}`, target: targetUsername, sender: username})); DEBUG
+            peerUsername = targetUsername;
             setupWebRTC(targetUsername);
         }
 
@@ -298,7 +305,7 @@
             // Create the RTCPeerConnection
 
             peerConnection = new RTCPeerConnection(
-                iceConfiguration
+                iceConfiguration    //comes from config.js file
             );
             
             // Create a data channel for file transfer
@@ -313,11 +320,11 @@
             }
 
             dataChannel.onmessage = (event) => {
-
+                //do nothing, since it is the sender side
             };
 
             // Set up ICE candidate handler
-            peerConnection.onicecandidate = ({ candidate }) => {
+            peerConnection.onicecandidate = ({ candidate }) => {    //remember .onicecandidate event comes from YOUR LOCAL MACHINE, not your peer's
                 if (candidate) {
                     socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: targetUsername, sender: username}));
                     console.log(`found new icecandidate, type ${candidate.candidate} , sending`);
@@ -551,9 +558,26 @@
             readNextChunk();  // Start reading the first chunk
         }
 
-        //bind function with disconnect button in file transfer section
-        document.getElementById('channelDisconnect').onclick = () =>{
+        //bind function with cancel button in file transfer section
+        document.getElementById('cancelTransfer').onclick = () =>{
+            var targetUsername = document.getElementById('peerUsernameInput').value;
             dataChannel.close();
+            
+            let newJsonObj = {
+                type: 'stopTransfer',
+                sender: username,
+                target: targetUsername,
+            }
+            socket.send(JSON.stringify(newJsonObj));
+            console.log("transfer canceled");
+            closeDataChannel();
+        }
+
+        //bind function with disconnect button in file transfer section
+        document.getElementById('channelDisconnect').onclick = closeDataChannel;
+        function closeDataChannel(){
+            dataChannel.close();
+            document.getElementById('sendStatus').innerHTML = "Status: Transfer Stopped";
             console.log("peer data channel disconnected");
         }
 
@@ -570,7 +594,7 @@
             isTransferring = false;
         }
 
-        // Event listener for 'Enter' key press in the input box
+        // Event listener for 'Enter' key in the chat box
         chatBoxInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
                 event.preventDefault(); // Prevents default action (like submitting a form)
