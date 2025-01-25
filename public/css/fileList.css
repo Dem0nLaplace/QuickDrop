@@ -1,0 +1,165 @@
+
+.file-icon::before {
+    display: block;
+    content: "";
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 0;
+    height: 0;
+    border-bottom-left-radius: 2px;
+    border-width: 6px;
+    border-style: solid;
+    border-color: #fff #fff #555 #555;
+}
+
+.file-icon::after {
+    font-size: 0.85rem;
+    font-family: 'Roboto', 'Open Sans', 'sans-serif';
+    font-weight: 700;
+    display: block;
+    content: attr(data-type);
+    position: absolute;
+    bottom: 35%;
+    color: #444;
+    text-transform: uppercase;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    letter-spacing: 0.75px;
+}
+
+.file-icon {
+    width: 40px;
+    height: 53px;
+    border-radius: 3px;
+    display: inline-block;
+    position: relative;
+    text-align: center;
+    margin-right: 25px;
+    background: #eee;
+    border: 3px solid #555;
+}
+
+.text-and-progress {
+    flex: 1;
+    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    align-self: center;
+}
+
+.file-name {
+    margin-bottom: 7px;
+}
+
+.progress {
+    display: flex;
+    height: 0.35rem;
+    overflow: hidden;
+    background-color: #e9ecef;
+    border-radius: .1rem;
+}
+
+.progress-bar {
+    display: -ms-flexbox;
+    display: flex;
+    -ms-flex-direction: column;
+    flex-direction: column;
+    -ms-flex-pack: center;
+    justify-content: center;
+    overflow: hidden;
+    white-space: nowrap;
+    background-color: #66cd8c;
+    transition: width .6s ease;
+}
+
+.file-size-and-percentage {
+    display: flex;
+    margin-top: 0.5rem;
+    font-weight: 500;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    color: #aaa;
+    justify-content: space-between;
+    /* keeps size on left and percentage on right> */
+}
+
+.file-status {
+    margin-left: 20px;
+    align-self: center;
+    font-size: 1.5rem;
+}
+
+.downloading {
+    color: #e9ecef;
+}
+
+.downloading:hover {
+    color: #f05064;
+    cursor: pointer;
+}
+
+.complete {
+    color: #66cd8c;
+}
+
+
+/* added 12/15/2024 */
+
+#container {
+    display: flex;
+    align-self: center;
+    justify-content: center;
+    align-items: center;
+    /* height: 200px; */
+    /* width: 200px; */
+    /* background-color: black; */
+    margin-top: 100px;
+}
+
+.template {
+    display: flex;
+}
+
+.file {
+    display: flex;
+    flex-direction: row;
+    width: 85%;
+    margin: 0px 0;
+    align-self: center;
+    margin-top: 10px;
+
+}
+
+.file img {
+    width: 53px;
+    height: 53px;
+    margin-right: 14px;
+    align-self: center;
+}
+
+#fileList {
+    /* background-color: black; */
+    height: 675px;
+    width: 450px;
+    border-color: #777;
+    border-width: 2px;
+    border-style: solid;
+    border-radius: 9px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#fileList h1 {
+    margin-left: 5%;
+    align-self: normal;
+}
+
+.dashed-divider {
+    border-top: 2px dashed lightgray;
+    /* Dashed line */
+    width: 90%;
+    align-self: center;
+}
