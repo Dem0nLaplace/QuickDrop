@@ -14,7 +14,6 @@
     <title>Document</title>
     <link rel="stylesheet" href="main.css">
     <link rel="stylesheet" href="/css/fileList.css">
-    <script src="/js/fileList.js"></script>
     <!-- <script src="client.js"></script> -->
  </head>
  <body>
@@ -123,7 +122,7 @@
                 socket.onmessage = async (event) => {
                     const jsonObj = JSON.parse(event.data);
 
-                    switch(jsonObj.type){   //type: uuid, message, userList, changeName
+                    switch(jsonObj.type){   //type: uuid, message, userList
                         case 'uuid':
                             uuid = jsonObj.uuid;
                             console.log("assigned uuid: " + jsonObj.uuid);
@@ -608,114 +607,120 @@
             isTransferring = false;
         }
 
-        // Event listener for 'Enter' key in the chat box
-        chatBoxInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault(); // Prevents default action (like submitting a form)
-                sendMessage();
-            }
-        });
+        
 
-        //added on 11/4/2024
-        function sendMessage(){
-            var messageText = document.getElementById('chatBoxInput').value;
-
-            if(messageText === ""){
-                console.log("Let's not send empty messages, shall we?");
-                return;
-            }
-
-            let newJsonObj = {
-                type: 'message',
-                sender: username,
-                messageText: messageText
-            }
-            socket.send(JSON.stringify(newJsonObj));
-            console.log("message sent");    //DEBUG
-            document.getElementById('chatBoxInput').value = "";
-        }
-
-
-        /*
-            Process incoming messages
-            by displaying them in the chatbox
-        */
-        function receiveMessage(sender, messageText){
-            const messageElement = document.createElement("div");
-            if(sender === "server"){
-                messageElement.innerHTML = `${messageText}`;
-            }else{
-                messageElement.innerHTML = `<b>${sender}</b>: ${messageText}`;
-            }
-            
-            document.getElementById("chatMessages").appendChild(messageElement);
-            document.getElementById("chatMessages").scrollTop = document.getElementById("chatMessages").scrollHeight;//auto scroll bottom
-        }
-
-        /*added 11/6/2024, code for file drag and drop*/
-        const dropArea = document.getElementById('dropArea');
-        const overlay = document.getElementById('overlay'); // Reference the overlay directly from the DOM
-        const newFileInput = document.getElementById('newFileInput');
-        let dragCounter = 0; // Counter to track drag events
-
-        // Prevent default drag behaviors for the entire document
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            document.addEventListener(eventName, (e) => e.preventDefault());
-        });
-
-        // Show overlay when dragging a file over the document
-        document.addEventListener('dragenter', (e) => {
-            e.preventDefault();
-            dragCounter++;
-            overlay.style.display = 'block';
-        });
-
-        // Hide overlay when dragging leaves or a file is dropped
-        document.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            dragCounter--;
-            if (dragCounter === 0) {
-                overlay.style.display = 'none';
-            }
-        });
-
-        // Handle drop event and process files
-        document.addEventListener('drop', (e) => {
-            e.preventDefault();
-            overlay.style.display = 'none';
-            dragCounter = 0; // Reset counter
-            const files = e.dataTransfer.files;
-            handleFiles(files);
-        });
-
-        // Handle click to open file input dialog
-        dropArea.addEventListener('click', () => {
-            newFileInput.click();
-        });
-
-        // Handle files selected through the file input
-        newFileInput.addEventListener('change', (e) => {
-            const files = e.target.files;
-            handleFiles(files);
-        });
-
-        // Function to handle the files and display file info
-        //DEBUG, WORK IN PROGRESS
-        function handleFiles(files) {
-            Array.from(files).forEach(file => {
-                const fileInfo = document.createElement('p');
-                fileInfo.textContent = `File: ${file.name} - Size: ${(file.size / 1024).toFixed(2)} KB`;
-                dropArea.appendChild(fileInfo);
-            });
-        }
-
+ 
 
         /* added 1/24/2025 DEBUG*/
         fileProgressTest = new fileProgress("sese", "mp4", 14000);
         addFileProgress(fileProgressTest, "", "");
 
         setInterval(()=>fileProgressTest.downloadSize += 1000, 1000);
+
+        function webRTCSetupSender(){
+            
+
+        }
+
+
+        async function webRTCSetupReceiver(offerObj){
+            try{
+                peerConnection = new RTCPeerConnection(
+                    iceConfiguration
+                );
+
+                // Set the remote description with the incoming offer
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(jsonObj.offer));
+
+                // Create an answer to send back to the offerer
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                socket.send(JSON.stringify({type: 'answer', answer: peerConnection.localDescription, target: jsonObj.sender }));
+
+                // Handle incoming ICE candidates
+                peerConnection.onicecandidate = ({ candidate }) => {
+                    console.log("new iceCandidate found");
+                    if (candidate) {
+                        socket.send(JSON.stringify({ type: 'iceCandidate', candidate: candidate, target: jsonObj.sender}));
+                        console.log(`found new icecandidate, type ${candidate.candidate} , sending`);
+                    }else{
+                        console.log("NULL iceCandidate!");
+                    }
+                };
+
+                var receiving = false;
+                let startTime = 0;
+                let intervalID = 0;
+                // Set up data channel for receiver
+                peerConnection.ondatachannel = (event) => {
+                    dataChannel = event.channel;
+                    console.log("received data channel, state = " + dataChannel.readyState);
+                    
+                    dataChannel.onopen = () => {
+                        console.log("Data channel open");
+                    } 
+                    
+                    dataChannel.onmessage = (event) => {
+                        if(typeof event.data === 'string'){ //receive metadata
+                            isTransferring = true;
+                            const jsonObj = JSON.parse(event.data);
+                            fileNameElement.textContent = `File: ${jsonObj.fileName}`;
+
+                            fileSize = jsonObj.fileSize;
+                            fileType = jsonObj.fileType;
+                            fileName = jsonObj.fileName;
+
+                            let sizeUnitArray = ["byte", "KB", "MB", "GB"];
+                            let sizeUnit = 0;
+                            let sizeDisplay = jsonObj.fileSize;
+
+                            for(let i=0; i<4; i++){
+                                if(sizeDisplay >= 1024){
+                                    sizeDisplay /= 1024;
+                                    sizeUnit++;
+                                }
+                            }
+
+                            fileSizeElement.textContent = `Size: ${sizeDisplay.toFixed(2)} ${sizeUnitArray[sizeUnit]}`;
+                            console.log("data channel: file metadata received!");
+
+                        }
+                        //else(event.data instanceof ArrayBuffer){
+                        else{  //the data transfered is binary data, the line above cannot catch this type of data
+                            if(!receiving){     //code to set up transfer progress interval when receiving first chunk of data
+                                receiving = true;
+                                startTime = Date.now();
+                                intervalID = setInterval(updateSpeed, 500);
+
+                                function updateSpeed(){
+                                    let speed = (receivedBytes/1024/1024)/((Date.now() - startTime)/1000);  //calculate speed in mb/s
+                                    transferSpeed.innerHTML = `${speed.toFixed(2)} mb/s`;
+                                }
+                            }
+
+
+                            receivedChunks.push(event.data);
+                            receivedBytes += event.data.byteLength;
+                            const percentComplete = (receivedBytes/fileSize) *100;  //DEBUG: poorly used variable (read)
+                            sendProgress.value = percentComplete;
+                            sendStatus.textContent = `Status: ${percentComplete.toFixed(2)}% received`;
+
+                            if (receivedBytes === fileSize) {
+                                sendStatus.textContent = 'Status: Transfer complete';
+                                clearInterval(intervalID);
+                                reconstructAndDownloadFile();  // File is fully received
+                            }
+                        }
+                    }   
+                }
+            }catch(e){
+                console.error("receiver data channel error: " + e);
+            }
+        }
     </script>
+    <script src="/js/fileList.js"></script>
+    <script src="/js/chatWindow.js"></script>
+    <script src="/js/fileDrop.js"></script>
  </body>
 
 
